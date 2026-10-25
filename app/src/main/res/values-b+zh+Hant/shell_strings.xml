@@ -1,0 +1,22 @@
+<resources>
+    <string name="shell_add_expense">新增支出</string>
+    <string name="shell_review_inbox">查看收件匣</string>
+    <string name="shell_organize">按你的習慣整理</string>
+    <string name="shell_organize_hint">建立適合日常生活的分類和標籤。</string>
+    <string name="shell_notifications">通知擷取</string>
+    <string name="shell_notifications_hint">管理來源和你教過的通知格式。</string>
+    <string name="shell_category_suggestions">先加幾個常用分類</string>
+    <string name="shell_category_suggestions_hint">輕按即可新增。這些只是標籤，不會建立自動規則。</string>
+    <string name="shell_food">飲食</string>
+    <string name="shell_transport">交通</string>
+    <string name="shell_groceries">日用品及食品</string>
+    <string name="shell_shopping">購物</string>
+    <string name="shell_bills">家居及帳單</string>
+    <string name="shell_health">醫療保健</string>
+    <string name="shell_search_labels">搜尋標籤或規則</string>
+    <string name="shell_new_category">新增分類</string>
+    <string name="shell_new_account">新增帳戶標籤</string>
+    <string name="shell_new_alias">新增商戶別名</string>
+    <string name="shell_new_rule">新增分類規則</string>
+    <string name="shell_no_label_matches">找不到相符標籤，試試其他關鍵字。</string>
+</resources>

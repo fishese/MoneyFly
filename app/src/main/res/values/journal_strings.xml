@@ -1,0 +1,29 @@
+<resources>
+    <plurals name="journal_entry_count">
+        <item quantity="one">%1$d entry</item>
+        <item quantity="other">%1$d entries</item>
+    </plurals>
+    <plurals name="journal_show_results_count">
+        <item quantity="one">Show %1$d entry</item>
+        <item quantity="other">Show %1$d entries</item>
+    </plurals>
+    <string name="journal_all_time">All time</string>
+    <string name="journal_search_hint">Search merchant, amount or label</string>
+    <string name="journal_clear_search">Clear search</string>
+    <string name="journal_pending_compact">Review %1$d</string>
+    <string name="journal_income_total">Income %1$s</string>
+    <string name="journal_refund_total">Refunds %1$s</string>
+    <string name="journal_transfer_excluded_total">Transfers %1$s excluded</string>
+    <string name="journal_this_month">This month</string>
+    <string name="journal_last_month">Last month</string>
+    <string name="journal_previous_month">Previous month</string>
+    <string name="journal_next_month">Next month</string>
+    <string name="journal_collapsed">Collapsed</string>
+    <string name="journal_expanded">Expanded</string>
+    <string name="journal_spending">Spending in this view</string>
+    <string name="journal_group_by">Group by</string>
+    <string name="journal_group_date">Date</string>
+    <string name="journal_empty_title">Your everyday money, in one place</string>
+    <string name="journal_empty_body">Tap Add to record your first entry. Saved captures will appear here too.</string>
+    <string name="journal_no_matches_body">Try another search or remove a filter to see more entries.</string>
+</resources>

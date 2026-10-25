@@ -1,0 +1,15 @@
+<resources>
+    <string name="inbox_ui_counts">Ready: %1$d · Review: %2$d</string>
+    <string name="inbox_ui_paused">Paused</string>
+    <string name="inbox_ui_access">Needs access</string>
+    <string name="inbox_ui_disconnected">Disconnected</string>
+    <string name="inbox_ui_connected">Connected</string>
+    <string name="inbox_ui_enable">Enable</string>
+    <string name="inbox_ui_notification_time">Uses notification time</string>
+    <string name="inbox_ui_setup">Setup</string>
+    <string name="inbox_ui_close">Close</string>
+    <string name="inbox_ui_search">Search merchant, amount or notification</string>
+    <string name="inbox_ui_all_apps">All apps ▾</string>
+    <string name="inbox_ui_more_actions">More actions</string>
+    <string name="inbox_ui_fewer_actions">Fewer actions</string>
+</resources>

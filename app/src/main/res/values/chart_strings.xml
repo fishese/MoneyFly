@@ -1,0 +1,16 @@
+<resources>
+    <string name="chart_title">Spending by category</string>
+    <string name="chart_open">Explore category spending</string>
+    <string name="chart_gross_expenses">Gross expenses only · refunds, income and transfers excluded</string>
+    <string name="chart_pie">Pie</string>
+    <string name="chart_bar">Bar</string>
+    <string name="chart_list">List</string>
+    <string name="chart_empty">No expenses in this view</string>
+    <string name="chart_tap">Tap a slice or category to explore</string>
+    <string name="chart_show_entries">Show these entries</string>
+    <string name="chart_share">%1$s%% · %2$s</string>
+    <string name="chart_summary">%1$s %2$s · %3$s</string>
+    <plurals name="chart_category_count"><item quantity="one">%1$d category</item><item quantity="other">%1$d categories</item></plurals>
+    <string name="chart_accessible_category">%1$s, %2$s %3$s, %4$s percent, %5$s</string>
+    <string name="chart_currency_count">%1$d currencies, shown separately</string>
+</resources>

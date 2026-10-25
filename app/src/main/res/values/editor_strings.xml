@@ -1,0 +1,31 @@
+<resources>
+    <string name="editor_more_types">More types</string>
+    <string name="editor_currency">Currency</string>
+    <string name="editor_amount_help">Use a positive amount and decimal point, with the currency\'s supported decimal places.</string>
+    <string name="editor_merchant_optional">Optional · who was it with?</string>
+    <string name="editor_recent_merchants">Recent merchants</string>
+    <string name="editor_all_categories">All categories</string>
+    <string name="editor_previous_category">Previously used: %1$s</string>
+    <string name="editor_previous_account">Use previous account: %1$s</string>
+    <string name="editor_notes_hint">What was this for? (optional)</string>
+    <string name="editor_today">Today</string>
+    <string name="editor_yesterday">Yesterday</string>
+    <string name="editor_optional_account">Account · %1$s (optional)</string>
+    <string name="editor_notification_details">Read full notification</string>
+    <string name="editor_search_labels">Search labels</string>
+    <string name="editor_no_label_matches">No matching labels</string>
+    <string name="editor_selected">Selected</string>
+    <string name="editor_create_category">Create “%1$s”</string>
+    <string name="editor_category_creation_hint">This creates a category only. Your entry is saved separately; the category stays available if you cancel the entry.</string>
+    <string name="editor_category_create_failed">Could not create this category. Check the name or select an existing category.</string>
+    <string name="editor_category_create_retry">Creation was interrupted. Tap Create to retry the same category, or close this picker and check the category list.</string>
+    <string name="editor_time_gap">This time does not exist in %1$s because the clocks move forward. Choose another time.</string>
+    <string name="editor_time_overlap">This time occurs twice in %1$s. Choose a time outside the repeated hour. An unchanged saved or notification time keeps its original offset.</string>
+    <string name="editor_time_invalid">Enter a valid date and time using YYYY-MM-DD and HH:mm.</string>
+    <string name="editor_missing_label_save">A selected label was removed. Choose another label or explicitly clear it before saving.</string>
+    <string name="editor_missing_category">Your selected category was removed. The amount and merchant are kept.</string>
+    <string name="editor_missing_account">Your selected account label was removed. Choose another account or leave it unassigned.</string>
+    <string name="editor_clear_category">Clear to Uncategorized</string>
+    <string name="editor_clear_account">Clear to Unassigned</string>
+    <string name="editor_removed_label">Removed label</string>
+</resources>

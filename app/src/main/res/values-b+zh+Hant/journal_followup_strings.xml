@@ -1,0 +1,8 @@
+<resources>
+    <string name="journal_no_spending">沒有支出</string>
+    <string name="ignore_rule_same_app">只限同一應用程式</string>
+    <string name="ignore_rule_all_apps">所有應用程式</string>
+    <string name="ignore_rule_all_apps_hint">此模式會套用到所有應用程式的通知，儲存前請檢視符合數量。</string>
+    <string name="inbox_summary_label">摘要通知</string>
+    <string name="inbox_summary_explanation">匯總多則通知，不是另一則聊天訊息或獨立支出。</string>
+</resources>

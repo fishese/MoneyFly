@@ -1,0 +1,15 @@
+<resources>
+    <string name="inbox_ui_counts">%1$d 項可儲存 · %2$d 項待確認</string>
+    <string name="inbox_ui_paused">已暫停</string>
+    <string name="inbox_ui_access">需要授權</string>
+    <string name="inbox_ui_disconnected">未連線</string>
+    <string name="inbox_ui_connected">已連線</string>
+    <string name="inbox_ui_enable">啟用</string>
+    <string name="inbox_ui_notification_time">使用通知時間</string>
+    <string name="inbox_ui_setup">收集設定</string>
+    <string name="inbox_ui_close">收起</string>
+    <string name="inbox_ui_search">搜尋商戶、金額或通知</string>
+    <string name="inbox_ui_all_apps">所有應用程式 ▾</string>
+    <string name="inbox_ui_more_actions">更多操作</string>
+    <string name="inbox_ui_fewer_actions">收起操作</string>
+</resources>

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ignore_rule_default_name">Similar messages</string>
+    <string name="ignore_rule_draft_hint">Review this draft. An exact title matches only that title; use * for changing parts. Long or wildcard-containing text is left for you to select below.</string>
+    <string name="ignore_rule_current_text">Current field — select text to copy</string>
+    <string name="ignore_rule_empty_field">This field has no text. Choose another notification field.</string>
+    <string name="swipe_ignore">Ignore</string>
+    <string name="swipe_record">Record</string>
+    <string name="ignore_heading">Ignore</string>
+    <string name="record_heading">Record</string>
+    <string name="ignore_choice_this">This item</string>
+    <string name="ignore_choice_similar">Similar messages</string>
+    <string name="ignore_choice_app">This app [%1$s]</string>
+    <string name="ignore_app_named">Ignore app [%1$s]</string>
+    <string name="record_choice_entry">Entry</string>
+    <string name="record_choice_template">Template</string>
+    <string name="ignore_similar">Ignore similar messages</string>
+    <string name="ignore_similar_title">Ignore similar messages</string>
+    <string name="ignore_similar_explanation">Create a rule for one notification field. * matches changing text. Review how many retained items match before saving.</string>
+    <string name="ignore_rule_app">App: %1$s</string>
+    <string name="ignore_rule_name">Rule name</string>
+    <string name="ignore_rule_field">Notification field</string>
+    <string name="ignore_rule_pattern">Pattern</string>
+    <string name="ignore_rule_pattern_hint">Example: Charging * full*. Matching covers the whole selected field.</string>
+    <string name="ignore_rule_ignore_case">Ignore upper/lower case</string>
+    <string name="preview_ignore_rule">Review matches</string>
+    <plurals name="ignore_rule_match_count"><item quantity="one">Matches %1$d retained item</item><item quantity="other">Matches %1$d retained items</item></plurals>
+    <string name="ignore_rule_privacy">Only the app, field and pattern you approve are saved as a rule.</string>
+    <string name="save_rule">Save rule</string>
+    <string name="retry_save_rule">Retry same rule</string>
+    <string name="ignore_rule_save_failed">Unable to save this rule.</string>
+    <string name="ignore_rule_save_unknown">The save result is unknown. Retry the same rule or cancel.</string>
+    <string name="ignore_rules">Similar-message rules</string>
+    <string name="ignore_rules_explanation">Enabled rules hide matching pending Inbox items. Turn a rule off to show those items again.</string>
+    <string name="no_ignore_rules">No similar-message rules yet.</string>
+    <string name="ignore_rule_summary">%1$s · %2$s · %3$s</string>
+    <string name="delete_ignore_rule_title">Delete this rule?</string>
+    <string name="delete_ignore_rule_explanation">Pending items hidden only by this rule will appear again.</string>
+    <string name="ignore_field_expanded">Expanded text</string>
+    <string name="ignore_field_subtext">Subtext</string>
+    <string name="ignore_field_lines">Text lines</string>
+    <string name="ignored_by_similar_rule">Hidden by a similar-message rule. Disable the rule in Settings to restore matching items.</string>
+</resources>

@@ -1,0 +1,13 @@
+<resources>
+    <string name="template_other_text">其他可變文字（選填）</string>
+    <string name="template_other_text_hint">選取會變動的日期、結餘或頁尾，避免範本只符合這一則訊息。這些文字不會用作金額或交易日期。</string>
+    <string name="template_no_merchant">此訊息沒有商戶資料</string>
+    <string name="template_no_merchant_hint">商戶會留空，您可在檢視記錄時補上。</string>
+    <string name="suggested_template_title">建立範本</string>
+    <string name="suggested_template_match_explanation">已知格式與此訊息相符。用於以後的通知前，請先檢查結果。</string>
+    <string name="suggested_template_scope">只適用於來自 %1$s 的通知</string>
+    <string name="suggested_template_review_only">建立範本不會新增記錄。以後相符的項目仍會顯示在收件匣供您檢查。</string>
+    <string name="suggested_template_use">使用建議範本</string>
+    <string name="suggested_template_custom">自訂範本</string>
+    <string name="suggested_template_save_failed">無法儲存範本或更新預覽。請檢查目前項目後重試。</string>
+</resources>

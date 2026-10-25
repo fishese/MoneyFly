@@ -1,0 +1,31 @@
+<resources>
+    <string name="editor_more_types">更多類型</string>
+    <string name="editor_currency">貨幣</string>
+    <string name="editor_amount_help">請輸入正數金額及小數點，並使用此貨幣支援的小數位數。</string>
+    <string name="editor_merchant_optional">可留空 · 與誰交易？</string>
+    <string name="editor_recent_merchants">最近商戶</string>
+    <string name="editor_all_categories">所有分類</string>
+    <string name="editor_previous_category">上次使用：%1$s</string>
+    <string name="editor_previous_account">使用上次帳戶：%1$s</string>
+    <string name="editor_notes_hint">這筆交易的用途？（可留空）</string>
+    <string name="editor_today">今天</string>
+    <string name="editor_yesterday">昨天</string>
+    <string name="editor_optional_account">帳戶 · %1$s（可留空）</string>
+    <string name="editor_notification_details">閱讀完整通知</string>
+    <string name="editor_search_labels">搜尋標籤</string>
+    <string name="editor_no_label_matches">沒有相符標籤</string>
+    <string name="editor_selected">已選取</string>
+    <string name="editor_create_category">建立「%1$s」</string>
+    <string name="editor_category_creation_hint">這只會建立分類。記錄需要另外儲存；即使取消記錄，分類仍可繼續使用。</string>
+    <string name="editor_category_create_failed">無法建立此分類。請檢查名稱或選擇現有分類。</string>
+    <string name="editor_category_create_retry">建立中斷。請按建立重試相同分類，或關閉此選擇器並檢查分類清單。</string>
+    <string name="editor_time_gap">%1$s 因時鐘向前調整而沒有此時間。請選擇其他時間。</string>
+    <string name="editor_time_overlap">%1$s 的此時間會出現兩次。請選擇重複時段以外的時間。未修改的已儲存或通知時間會保留原本時差。</string>
+    <string name="editor_time_invalid">請輸入有效日期及時間，格式為 YYYY-MM-DD 及 HH:mm。</string>
+    <string name="editor_missing_label_save">所選標籤已移除。儲存前請選擇其他標籤，或明確清除選擇。</string>
+    <string name="editor_missing_category">所選分類已移除，金額及商戶仍會保留。</string>
+    <string name="editor_missing_account">所選帳戶標籤已移除。請選擇其他帳戶或保持未指定。</string>
+    <string name="editor_clear_category">清除為未分類</string>
+    <string name="editor_clear_account">清除為未指定</string>
+    <string name="editor_removed_label">已移除標籤</string>
+</resources>

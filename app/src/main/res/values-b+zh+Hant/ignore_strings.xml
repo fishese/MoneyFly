@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ignore_rule_default_name">類似訊息</string>
+    <string name="ignore_rule_draft_hint">請檢視草稿。完整標題只會符合相同標題，可用 * 代替會改變的部分。過長或包含 * 的文字請從下方選取。</string>
+    <string name="ignore_rule_current_text">目前欄位 — 可選取及複製文字</string>
+    <string name="ignore_rule_empty_field">此欄位沒有文字，請選擇其他通知欄位。</string>
+    <string name="swipe_ignore">忽略</string>
+    <string name="swipe_record">記錄</string>
+    <string name="ignore_heading">忽略</string>
+    <string name="record_heading">記錄</string>
+    <string name="ignore_choice_this">此項目</string>
+    <string name="ignore_choice_similar">類似訊息</string>
+    <string name="ignore_choice_app">此應用程式 [%1$s]</string>
+    <string name="ignore_app_named">忽略應用程式 [%1$s]</string>
+    <string name="record_choice_entry">記帳</string>
+    <string name="record_choice_template">範本</string>
+    <string name="ignore_similar">忽略類似訊息</string>
+    <string name="ignore_similar_title">忽略類似訊息</string>
+    <string name="ignore_similar_explanation">為一個通知欄位建立規則。* 可配對變動文字。儲存前請檢查符合的保留項目數目。</string>
+    <string name="ignore_rule_app">應用程式：%1$s</string>
+    <string name="ignore_rule_name">規則名稱</string>
+    <string name="ignore_rule_field">通知欄位</string>
+    <string name="ignore_rule_pattern">模式</string>
+    <string name="ignore_rule_pattern_hint">例如：Charging * full*。模式會配對整個所選欄位。</string>
+    <string name="ignore_rule_ignore_case">不分大小寫</string>
+    <string name="preview_ignore_rule">檢查符合項目</string>
+    <plurals name="ignore_rule_match_count"><item quantity="other">符合 %1$d 個保留項目</item></plurals>
+    <string name="ignore_rule_privacy">只會將您確認的應用程式、欄位及模式儲存為規則。</string>
+    <string name="save_rule">儲存規則</string>
+    <string name="retry_save_rule">重試相同規則</string>
+    <string name="ignore_rule_save_failed">無法儲存此規則。</string>
+    <string name="ignore_rule_save_unknown">無法確定儲存結果。請重試相同規則或取消。</string>
+    <string name="ignore_rules">類似訊息規則</string>
+    <string name="ignore_rules_explanation">已啟用的規則會隱藏符合的待處理項目。關閉規則後，這些項目會再次顯示。</string>
+    <string name="no_ignore_rules">尚未建立類似訊息規則。</string>
+    <string name="ignore_rule_summary">%1$s · %2$s · %3$s</string>
+    <string name="delete_ignore_rule_title">刪除此規則？</string>
+    <string name="delete_ignore_rule_explanation">只因這項規則而隱藏的待處理項目會再次顯示。</string>
+    <string name="ignore_field_expanded">展開文字</string>
+    <string name="ignore_field_subtext">副文字</string>
+    <string name="ignore_field_lines">文字行</string>
+    <string name="ignored_by_similar_rule">已由類似訊息規則隱藏。可在設定停用規則以還原符合項目。</string>
+</resources>

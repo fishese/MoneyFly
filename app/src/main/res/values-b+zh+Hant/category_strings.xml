@@ -1,0 +1,31 @@
+<resources>
+    <string name="category_meals">餐飲</string>
+    <string name="category_entertainment">娛樂</string>
+    <string name="category_hobby">興趣</string>
+    <string name="category_transportation">交通</string>
+    <string name="category_shopping">購物</string>
+    <string name="category_groceries">日常雜貨</string>
+    <string name="category_bills">帳單</string>
+    <string name="category_health">健康</string>
+    <string name="category_travel">旅遊</string>
+    <string name="category_education">教育</string>
+    <string name="category_gifts">禮物</string>
+    <string name="category_subscriptions">訂閱</string>
+    <string name="category_personal_care">個人護理</string>
+    <string name="category_home">家居</string>
+    <string name="category_pets">寵物</string>
+    <string name="category_sports">運動</string>
+    <string name="category_family">家庭</string>
+    <string name="category_charity">捐款</string>
+    <string name="category_fees">手續費</string>
+    <string name="category_common">常用支出分類</string>
+    <string name="category_catalog_hint">需要時可新增分類，亦可在設定重新命名或移除。記帳需要另外儲存。</string>
+    <string name="category_more">更多分類</string>
+    <string name="category_catalog_search">搜尋分類建議</string>
+    <string name="category_custom">自訂分類…</string>
+    <string name="category_done">完成</string>
+    <string name="category_add">新增</string>
+    <string name="category_added">已新增</string>
+    <string name="category_retry">重試：%1$s</string>
+    <string name="category_catalog_failed">無法完成新增分類。請重試相同選項，或檢查現有分類清單。</string>
+</resources>

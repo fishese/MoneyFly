@@ -1,0 +1,27 @@
+<resources>
+    <plurals name="journal_entry_count">
+        <item quantity="other">%1$d 筆</item>
+    </plurals>
+    <plurals name="journal_show_results_count">
+        <item quantity="other">顯示 %1$d 筆</item>
+    </plurals>
+    <string name="journal_all_time">所有時間</string>
+    <string name="journal_search_hint">搜尋商戶、金額或標籤</string>
+    <string name="journal_clear_search">清除搜尋</string>
+    <string name="journal_pending_compact">%1$d 則待核對</string>
+    <string name="journal_income_total">收入 %1$s</string>
+    <string name="journal_refund_total">退款 %1$s</string>
+    <string name="journal_transfer_excluded_total">不含轉帳 %1$s</string>
+    <string name="journal_this_month">本月</string>
+    <string name="journal_last_month">上月</string>
+    <string name="journal_previous_month">上一個月</string>
+    <string name="journal_next_month">下一個月</string>
+    <string name="journal_collapsed">已收合</string>
+    <string name="journal_expanded">已展開</string>
+    <string name="journal_spending">目前範圍的支出</string>
+    <string name="journal_group_by">分組方式</string>
+    <string name="journal_group_date">日期</string>
+    <string name="journal_empty_title">日常收支，一目了然</string>
+    <string name="journal_empty_body">點按「新增」記下第一筆收支。已儲存的通知記錄亦會顯示於此。</string>
+    <string name="journal_no_matches_body">嘗試其他關鍵字，或移除篩選條件以顯示更多記錄。</string>
+</resources>

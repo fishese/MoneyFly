@@ -1,0 +1,8 @@
+<resources>
+    <string name="journal_no_spending">No spending</string>
+    <string name="ignore_rule_same_app">Same app only</string>
+    <string name="ignore_rule_all_apps">All apps</string>
+    <string name="ignore_rule_all_apps_hint">This pattern will apply to notifications from every app. Review the match count before saving.</string>
+    <string name="inbox_summary_label">Summary notification</string>
+    <string name="inbox_summary_explanation">Summarizes several notifications. This is not a separate chat message or expense.</string>
+</resources>

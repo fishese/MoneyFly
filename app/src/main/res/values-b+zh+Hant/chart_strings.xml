@@ -1,0 +1,16 @@
+<resources>
+    <string name="chart_title">各類別支出</string>
+    <string name="chart_open">查看類別支出詳情</string>
+    <string name="chart_gross_expenses">僅計支出總額 · 不含退款、收入及轉帳</string>
+    <string name="chart_pie">圓餅圖</string>
+    <string name="chart_bar">長條圖</string>
+    <string name="chart_list">列表</string>
+    <string name="chart_empty">目前範圍內沒有支出</string>
+    <string name="chart_tap">點按圖表或類別查看詳情</string>
+    <string name="chart_show_entries">顯示這些記錄</string>
+    <string name="chart_share">%1$s%% · %2$s</string>
+    <string name="chart_summary">%1$s %2$s · %3$s</string>
+    <plurals name="chart_category_count"><item quantity="other">%1$d 個類別</item></plurals>
+    <string name="chart_accessible_category">%1$s，%2$s %3$s，百分之 %4$s，%5$s</string>
+    <string name="chart_currency_count">%1$d 種貨幣，分別顯示</string>
+</resources>

@@ -1,0 +1,13 @@
+<resources>
+    <string name="template_other_text">Other changing text (optional)</string>
+    <string name="template_other_text_hint">Select a changing date, balance or footer so it is not fixed in the template. This text is not used as money or as the transaction date.</string>
+    <string name="template_no_merchant">No merchant in this message</string>
+    <string name="template_no_merchant_hint">Leave merchant blank. You can add it while reviewing an entry.</string>
+    <string name="suggested_template_title">Create a template</string>
+    <string name="suggested_template_match_explanation">A known format matches this message. Review the result before using it for future notifications.</string>
+    <string name="suggested_template_scope">Only notifications from %1$s</string>
+    <string name="suggested_template_review_only">Creating this template does not record an entry. Future matches still appear in the Inbox for review.</string>
+    <string name="suggested_template_use">Use suggested template</string>
+    <string name="suggested_template_custom">Build a custom template</string>
+    <string name="suggested_template_save_failed">The template or refreshed preview could not be saved. Review the current item and try again.</string>
+</resources>

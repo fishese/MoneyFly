@@ -1,0 +1,22 @@
+<resources>
+    <string name="shell_add_expense">Add expense</string>
+    <string name="shell_review_inbox">Review Inbox</string>
+    <string name="shell_organize">Make it yours</string>
+    <string name="shell_organize_hint">Create the categories and labels that fit your day.</string>
+    <string name="shell_notifications">Notification capture</string>
+    <string name="shell_notifications_hint">Manage sources and the formats you have taught.</string>
+    <string name="shell_category_suggestions">Start with a few categories</string>
+    <string name="shell_category_suggestions_hint">Tap to add one. These are labels, not automatic rules.</string>
+    <string name="shell_food">Food &amp; drinks</string>
+    <string name="shell_transport">Transport</string>
+    <string name="shell_groceries">Groceries</string>
+    <string name="shell_shopping">Shopping</string>
+    <string name="shell_bills">Home &amp; bills</string>
+    <string name="shell_health">Health</string>
+    <string name="shell_search_labels">Find a label or rule</string>
+    <string name="shell_new_category">New category</string>
+    <string name="shell_new_account">New account label</string>
+    <string name="shell_new_alias">New merchant alias</string>
+    <string name="shell_new_rule">New category rule</string>
+    <string name="shell_no_label_matches">No matching labels. Try another search.</string>
+</resources>

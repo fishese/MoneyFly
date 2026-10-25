@@ -1,0 +1,31 @@
+<resources>
+    <string name="category_meals">Meals</string>
+    <string name="category_entertainment">Entertainment</string>
+    <string name="category_hobby">Hobby</string>
+    <string name="category_transportation">Transportation</string>
+    <string name="category_shopping">Shopping</string>
+    <string name="category_groceries">Groceries</string>
+    <string name="category_bills">Bills</string>
+    <string name="category_health">Health</string>
+    <string name="category_travel">Travel</string>
+    <string name="category_education">Education</string>
+    <string name="category_gifts">Gifts</string>
+    <string name="category_subscriptions">Subscriptions</string>
+    <string name="category_personal_care">Personal care</string>
+    <string name="category_home">Home</string>
+    <string name="category_pets">Pets</string>
+    <string name="category_sports">Sports</string>
+    <string name="category_family">Family</string>
+    <string name="category_charity">Charity</string>
+    <string name="category_fees">Fees</string>
+    <string name="category_common">Common expense categories</string>
+    <string name="category_catalog_hint">Add a category when you need it. You can rename or remove categories in Settings; entries are saved separately.</string>
+    <string name="category_more">More categories</string>
+    <string name="category_catalog_search">Search category ideas</string>
+    <string name="category_custom">Custom category…</string>
+    <string name="category_done">Done</string>
+    <string name="category_add">Add</string>
+    <string name="category_added">Added</string>
+    <string name="category_retry">Retry: %1$s</string>
+    <string name="category_catalog_failed">Could not finish adding this category. Retry the same choice or check the existing category list.</string>
+</resources>
