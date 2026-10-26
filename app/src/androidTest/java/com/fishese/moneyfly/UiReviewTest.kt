@@ -43,13 +43,15 @@ class UiReviewTest {
                 Row("bakery", "SAMPLE Bakery", "26.00", "food", 1),
                 Row("books", "SAMPLE Bookshop", "118.00", "shopping", 2),
                 Row("usd", "SAMPLE Online Store", "19.90", "shopping", 2, "USD"),
+                Row("jpy", "SAMPLE Museum", "2500", "shopping", 2, "JPY"),
                 Row("income", "SAMPLE Income", "1200.00", "", 3, kind = EntryKind.INCOME),
             )
             for ((index, row) in rows.withIndex()) {
                 val date = today.minusDays(row.days).atTime(12, 30 - index).atZone(zone).toInstant()
                 store.execute(LedgerCommand.Save(EntryDraft(row.amount, row.currency, row.kind, date, row.merchant,
                     notes = if (row.id == "lunch") "Invented lunch with friends" else "",
-                    categoryId = row.category.takeIf(String::isNotBlank)?.let { "ui-$it" }, accountId = "ui-card"),
+                    categoryId = row.category.takeIf(String::isNotBlank)?.let { "ui-$it" }, accountId = "ui-card",
+                    exchangeRate = if (row.id == "jpy") "0.0525" else null, exchangeRateCurrency = if (row.id == "jpy") "HKD" else null),
                     entryId = "ui-${row.id}", operationId = "ui-save-${row.id}"))
             }
             store.execute(LedgerCommand.SetCaptureConsent(true, 0, "ui-consent-enable"))

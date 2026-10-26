@@ -16,6 +16,9 @@ internal object CommandFingerprint {
                 add(value.merchant); add(value.notes); add(value.categoryId); add(value.accountId)
                 add(value.canonicalMerchant); add(value.sourcePackage); add(value.timeOrigin.name)
                 add(value.timePrecision.name); add(value.categoryOrigin.name)
+                if (value.exchangeRate != null || value.exchangeRateCurrency != null) {
+                    add("entry-exchange-rate"); add(value.exchangeRate); add(value.exchangeRateCurrency)
+                }
             }
             when (command) {
                 is LedgerCommand.Save -> { add("save"); add(command.entryId); draft(command.draft) }

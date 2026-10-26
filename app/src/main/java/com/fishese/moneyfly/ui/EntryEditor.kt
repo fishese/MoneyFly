@@ -47,13 +47,17 @@ import kotlinx.coroutines.flow.flowOf
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun EntryEditor(id: String, expectedRevision: Long, original: LedgerEntry?, categories: List<Category>, accounts: List<AccountLabel>, aliases: List<MerchantAlias>, rules: List<CategoryRule>, store: LedgerStore, close: () -> Unit, saved: (LedgerCommand, CommandResult) -> Unit, delete: () -> Unit, receipt: InboxItem? = null, receiptRevision: Long = 0, separatePurchase: Boolean = false, recentEntries: List<LedgerEntry> = emptyList()) {
+internal fun EntryEditor(id: String, expectedRevision: Long, original: LedgerEntry?, categories: List<Category>, accounts: List<AccountLabel>, aliases: List<MerchantAlias>, rules: List<CategoryRule>, store: LedgerStore, close: () -> Unit, saved: (LedgerCommand, CommandResult) -> Unit, delete: () -> Unit, receipt: InboxItem? = null, receiptRevision: Long = 0, separatePurchase: Boolean = false, recentEntries: List<LedgerEntry> = emptyList(), reportingCurrency: String = "HKD", fx: com.fishese.moneyfly.fx.FxSnapshot? = null) {
     key(id) {
-        val initial = remember(id) { original?.draft ?: receipt?.draft ?: receipt?.let { EntryDraft(occurredAt = it.postedAt, sourcePackage = it.sourcePackage, timeOrigin = TimeOrigin.NOTIFICATION_POSTED, timePrecision = TimePrecision.UNKNOWN) } ?: EntryDraft() }
+        val initial = remember(id) { original?.draft ?: receipt?.draft ?: receipt?.let { EntryDraft(currency = reportingCurrency, occurredAt = it.postedAt, sourcePackage = it.sourcePackage, timeOrigin = TimeOrigin.NOTIFICATION_POSTED, timePrecision = TimePrecision.UNKNOWN) } ?: EntryDraft(currency = reportingCurrency) }
         val originalReceipt = remember(id) { receipt }
         val zone = ZoneId.systemDefault()
         var amount by rememberSaveable { mutableStateOf(initial.amount) }
         var currency by rememberSaveable { mutableStateOf(initial.currency) }
+        var customRate by rememberSaveable { mutableStateOf(initial.exchangeRate != null) }
+        var entryRate by rememberSaveable { mutableStateOf(initial.exchangeRate.orEmpty()) }
+        var rateCurrency by rememberSaveable { mutableStateOf(initial.exchangeRateCurrency ?: reportingCurrency) }
+        val validRate = !customRate || runCatching { com.fishese.moneyfly.fx.validatedEntryRate(entryRate, rateCurrency) }.isSuccess
         var kind by rememberSaveable { mutableStateOf(initial.kind.name) }
         var merchant by rememberSaveable { mutableStateOf(initial.merchant) }
         var canonicalMerchant by rememberSaveable { mutableStateOf(initial.canonicalMerchant) }
@@ -124,9 +128,9 @@ internal fun EntryEditor(id: String, expectedRevision: Long, original: LedgerEnt
                             error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(bottom = 8.dp).testTag("entry_error")) }
                             dateProblem?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(bottom = 8.dp).testTag("entry_time_error")) }
                             if (missingCategory || missingAccount) Text(stringResource(R.string.editor_missing_label_save), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(bottom = 8.dp).testTag("entry_label_error"))
-                            Button(enabled = !busy && normalized != null && instant != null && !missingCategory && !missingAccount, modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp).testTag("save_entry"), onClick = {
-                                if (normalized == null || instant == null || missingCategory || missingAccount) { error = invalid; return@Button }
-                                val draft = initial.copy(amount = normalized, currency = currency, kind = EntryKind.valueOf(kind), merchant = merchant, canonicalMerchant = canonicalMerchant, notes = notes, categoryId = category.ifEmpty { null }, accountId = account.ifEmpty { null }, occurredAt = instant, timeOrigin = timeResolution.origin!!, timePrecision = timeResolution.precision!!, categoryOrigin = if (category.isEmpty()) CategoryOrigin.UNASSIGNED else CategoryOrigin.EXPLICIT)
+                            Button(enabled = !busy && normalized != null && instant != null && !missingCategory && !missingAccount && validRate, modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp).testTag("save_entry"), onClick = {
+                                if (normalized == null || instant == null || missingCategory || missingAccount || !validRate) { error = invalid; return@Button }
+                                val draft = initial.copy(amount = normalized, currency = currency, kind = EntryKind.valueOf(kind), merchant = merchant, canonicalMerchant = canonicalMerchant, notes = notes, categoryId = category.ifEmpty { null }, accountId = account.ifEmpty { null }, occurredAt = instant, timeOrigin = timeResolution.origin!!, timePrecision = timeResolution.precision!!, categoryOrigin = if (category.isEmpty()) CategoryOrigin.UNASSIGNED else CategoryOrigin.EXPLICIT, exchangeRate = if (customRate) entryRate else null, exchangeRateCurrency = if (customRate) rateCurrency else null)
                                 val command: LedgerCommand = when {
                                     originalReceipt != null -> LedgerCommand.SaveCaptured(originalReceipt.id, receiptRevision, draft, if (separatePurchase) SaveDecision.SEPARATE_PURCHASE else SaveDecision.NORMAL, entryId, operationId)
                                     id == "new" -> LedgerCommand.Save(draft, entryId, operationId)
@@ -160,7 +164,7 @@ internal fun EntryEditor(id: String, expectedRevision: Long, original: LedgerEnt
                                         if (item.payload.body.isNotBlank()) Text(item.payload.body, maxLines = 2, overflow = TextOverflow.Ellipsis)
                                     } else Text(stringResource(R.string.content_expired))
                                     TextButton(onClick = { notificationExpanded = !notificationExpanded }) { Text(stringResource(if (notificationExpanded) R.string.less_details else R.string.editor_notification_details)) }
-                                    if (item.draft == null) Text(stringResource(R.string.currency_assumption), style = MaterialTheme.typography.bodySmall)
+                                    if (item.draft == null) Text(stringResource(R.string.currency_assumption, reportingCurrency), style = MaterialTheme.typography.bodySmall)
                                 }
                             }
                         }
@@ -172,7 +176,7 @@ internal fun EntryEditor(id: String, expectedRevision: Long, original: LedgerEnt
                         Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = MaterialTheme.shapes.large) {
                             Row(Modifier.padding(14.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                 OutlinedTextField(amount, { amount = it }, enabled = editable, label = { Text(stringResource(R.string.amount)) }, placeholder = { Text("0.00") }, textStyle = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.SemiBold), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next), keyboardActions = KeyboardActions(onNext = { merchantFocus.requestFocus() }), singleLine = true, modifier = Modifier.weight(1f).focusRequester(amountFocus).testTag("entry_amount"), isError = amount.isNotEmpty() && normalized == null)
-                                OutlinedTextField(currency, { currency = it.uppercase(java.util.Locale.ROOT).take(3) }, enabled = editable, label = { Text(stringResource(R.string.editor_currency)) }, keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, imeAction = ImeAction.Next), keyboardActions = KeyboardActions(onNext = { merchantFocus.requestFocus() }), textStyle = MaterialTheme.typography.titleMedium, singleLine = true, modifier = Modifier.width(100.dp).testTag("entry_currency"))
+                                OutlinedTextField(currency, { currency = it.uppercase(java.util.Locale.ROOT).take(3); customRate = false; entryRate = ""; rateCurrency = reportingCurrency }, enabled = editable, label = { Text(stringResource(R.string.editor_currency)) }, keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, imeAction = ImeAction.Next), keyboardActions = KeyboardActions(onNext = { merchantFocus.requestFocus() }), textStyle = MaterialTheme.typography.titleMedium, singleLine = true, modifier = Modifier.width(100.dp).testTag("entry_currency"))
                             }
                         }
                         if (amount.isNotEmpty() && normalized == null) Text(stringResource(R.string.editor_amount_help), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
@@ -199,6 +203,11 @@ internal fun EntryEditor(id: String, expectedRevision: Long, original: LedgerEnt
                             if (suggestion.needsChoice) Text(stringResource(R.string.rule_conflict, suggestion.conflictingCategoryIds.mapNotNull { candidate -> categories.find { it.id == candidate }?.name }.joinToString(", ")), color = MaterialTheme.colorScheme.error)
                             else if (!categoryTouched && category.isEmpty() && suggestion.categoryId != null) TextButton(onClick = { category = suggestion.categoryId; categoryTouched = true }, enabled = editable, modifier = Modifier.testTag("apply_rule_category")) { Text(stringResource(R.string.use_suggestion, categories.find { it.id == suggestion.categoryId }?.name.orEmpty())) }
                             if (!categoryTouched && previousCategory != null && !suggestion.needsChoice && suggestion.categoryId == null) SuggestionChip(onClick = { category = previousCategory.id; categoryTouched = true }, enabled = editable, label = { Text(stringResource(R.string.editor_previous_category, previousCategory.name)) }, modifier = Modifier.testTag("apply_recent_category"))
+                        }
+                        if (currency != reportingCurrency || customRate) {
+                            EntryRateFields(currency, if (customRate) rateCurrency else reportingCurrency, entryRate, customRate, editable,
+                                fx?.quotes?.get("${instant?.atZone(zone)?.toLocalDate()}:$currency:$reportingCurrency"),
+                                { customRate = it }, { entryRate = it }, { rateCurrency = it })
                         }
                         OutlinedTextField(notes, { notes = it }, enabled = editable, label = { Text(stringResource(R.string.notes)) }, placeholder = { Text(stringResource(R.string.editor_notes_hint)) }, minLines = 1, maxLines = 4, keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done), keyboardActions = KeyboardActions(onDone = { focus.clearFocus() }), modifier = Modifier.fillMaxWidth().focusRequester(notesFocus).testTag("entry_notes"))
                         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

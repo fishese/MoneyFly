@@ -127,7 +127,7 @@
     <string name="delete_template">刪除此範本？</string>
     <string name="template_delete_hint">日後通知將不再使用此範本。已儲存的帳簿記錄保持不變。</string>
     <string name="repreview_item">重新預覽此待處理項目</string>
-    <string name="currency_assumption">HKD 是手動記帳的預設貨幣，並非從此通知辨識所得。儲存前請確認或變更。</string>
+    <string name="currency_assumption">%1$s 是手動記帳的預設貨幣，並非從此通知辨識所得。儲存前請確認或變更。</string>
     <string name="filters">篩選</string>
     <string name="clear_all">全部清除</string>
     <string name="all">全部</string>
@@ -206,4 +206,30 @@
     <string name="template_case_insensitive">不分大小寫</string>
     <string name="template_currency_literal">貨幣明確包含在相符的格式內。</string>
     <string name="template_apply_report">已檢查 %1$d 則 · 符合 %2$d 則\n已記錄 %3$d 則 · 待檢查 %4$d 則 · 不符 %5$d 則</string>
+    <string name="fx_reporting_currency">報表貨幣</string>
+    <string name="fx_original_currency">原始貨幣</string>
+    <string name="fx_search_currency">搜尋貨幣</string>
+    <string name="fx_default_hint">預設為 HKD；在你於此選擇貨幣前，會使用第一筆匯入記錄的貨幣。</string>
+    <string name="fx_provider_hint">使用 Frankfurter 每日參考匯率，按各記錄日期換算。重新整理亦會檢查歷史匯率。信用卡匯率可能不同。</string>
+    <string name="fx_privacy">只會查詢貨幣代碼及日期。金額、商戶及通知內容保留在此裝置。</string>
+    <string name="fx_last_checked">上次檢查匯率：%1$s</string>
+    <string name="fx_refresh">更新匯率</string>
+    <string name="fx_refresh_short">更新匯率</string>
+    <string name="fx_refreshing">正在更新匯率…</string>
+    <string name="fx_refresh_failed">部分匯率未能更新。已快取的匯率仍可使用；你可手動輸入缺少的匯率。</string>
+    <string name="fx_entry_rate">匯率</string>
+    <string name="fx_custom_rate">使用信用卡或自訂匯率</string>
+    <string name="fx_rate_target">換算為</string>
+    <string name="fx_rate_direction">每 1 %1$s 的 %2$s 金額</string>
+    <string name="fx_rate_help">只用於這筆記錄及目標貨幣。請輸入信用卡或結單使用的匯率。</string>
+    <string name="fx_invalid_rate">請輸入正數匯率，最多 18 位小數。</string>
+    <string name="fx_auto_rate">每日匯率（%4$s）：1 %1$s = %2$s %3$s</string>
+    <string name="fx_rate_pending">未有可用匯率</string>
+    <string name="fx_combined">合併（%1$s）</string>
+    <string name="fx_separate">分開貨幣</string>
+    <string name="fx_missing_count">缺少匯率：%1$d 筆。合併總額暫不包括這些記錄。</string>
+    <string name="fx_partial">部分總額</string>
+    <string name="fx_custom_label">自訂匯率</string>
+    <string name="fx_daily_label">每日匯率</string>
+    <string name="fx_row_conversion">%1$s %2$s · 1 %1$s = %3$s %4$s · %5$s · %6$s</string>
 </resources>

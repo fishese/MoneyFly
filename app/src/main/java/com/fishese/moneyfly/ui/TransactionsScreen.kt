@@ -8,6 +8,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -33,7 +35,7 @@ import java.time.format.FormatStyle
 @Composable
 internal fun Transactions(
     entries: List<LedgerEntry>, categories: List<Category>, accounts: List<AccountLabel>,
-    modifier: Modifier, pendingCount: Int = 0, onPendingInbox: () -> Unit = {}, edit: (LedgerEntry) -> Unit,
+    modifier: Modifier, pendingCount: Int = 0, onPendingInbox: () -> Unit = {}, fx: com.fishese.moneyfly.fx.FxSnapshot? = null, changeDisplay: (Boolean) -> Unit = {}, refreshRates: () -> Unit = {}, edit: (LedgerEntry) -> Unit,
 ) {
     val today = LocalDate.now()
     var search by rememberSaveable { mutableStateOf("") }
@@ -54,6 +56,10 @@ internal fun Transactions(
     val dateError = (start.isNotBlank() && from == null) || (end.isNotBlank() && through == null) || (from != null && through != null && from > through)
     val filter = LedgerFilter(categoryId = category.takeIf { it.isNotEmpty() && it != "none" }, uncategorizedOnly = category == "none", accountId = account.takeIf { it.isNotEmpty() && it != "none" }, unassignedOnly = account == "none", fromDate = from, untilDateExclusive = untilExclusive, kinds = kind.takeIf { it.isNotEmpty() }?.let { setOf(EntryKind.valueOf(it)) } ?: emptySet())
     val rows = if (dateError) emptyList() else entries.filter { filter.matches(it) && (currency.isEmpty() || it.draft.currency == currency) && matchesJournalSearch(it, search, categories, accounts) }.sortedByDescending { it.draft.occurredAt }
+    val combined = fx != null && !fx.separate
+    val reportRows = remember(rows, fx) { if (combined) fx!!.project(rows) else rows }
+    val reportById = reportRows.associateBy { it.id }
+    val missingRates = if (combined) rows.size - reportRows.size else 0
     val groups = journalGroups(rows, JournalGrouping.valueOf(grouping), categories, accounts)
     fun month(value: YearMonth) { start = value.atDay(1).toString(); end = value.atEndOfMonth().toString() }
     fun clear() { search = ""; category = ""; account = ""; kind = ""; currency = ""; start = ""; end = "" }
@@ -88,27 +94,42 @@ internal fun Transactions(
                 SuggestionChip(onClick = { start = ""; end = "" }, label = { Text(stringResource(R.string.journal_all_time), style = MaterialTheme.typography.labelMedium) })
             }
         }
+        if (fx != null) item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                FilterChip(selected = !fx.separate, onClick = { changeDisplay(false) }, label = { Text(stringResource(R.string.fx_combined, fx.currency)) }, modifier = Modifier.weight(1.3f).testTag("combined_currencies"))
+                FilterChip(selected = fx.separate, onClick = { changeDisplay(true) }, label = { Text(stringResource(R.string.fx_separate)) }, modifier = Modifier.weight(1f).testTag("separate_currencies"))
+                IconButton(enabled = !fx.refreshing, onClick = refreshRates, modifier = Modifier.testTag("journal_refresh_rates")) { Icon(Icons.Default.Refresh, stringResource(R.string.fx_refresh_short)) }
+            }
+            if (missingRates > 0) Text(stringResource(R.string.fx_missing_count, missingRates), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("missing_exchange_rates"))
+        }
         item {
-            CategorySpendingOverview(rows, categories) { selectedCategory, selectedCurrency ->
+            CategorySpendingOverview(reportRows, categories) { selectedCategory, selectedCurrency ->
                 category = selectedCategory ?: "none"
-                currency = selectedCurrency
+                if (!combined) currency = selectedCurrency
                 kind = EntryKind.EXPENSE.name
             }
         }
         if (rows.isNotEmpty()) item {
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ledgerTotals(rows).forEach { total ->
-                    Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.large, modifier = Modifier.widthIn(min = 190.dp, max = 270.dp)) {
-                        Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text(stringResource(R.string.journal_spending), style = MaterialTheme.typography.labelSmall)
-                            Text("${total.currency} ${total.expense.toPlainString()}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                            val extra = listOfNotNull(
-                                if (total.income.signum() != 0) stringResource(R.string.journal_income_total, total.income.toPlainString()) else null,
-                                if (total.refund.signum() != 0) stringResource(R.string.journal_refund_total, total.refund.toPlainString()) else null,
-                                if (total.transfer.signum() != 0) stringResource(R.string.journal_transfer_excluded_total, total.transfer.toPlainString()) else null,
-                            )
-                            if (extra.isNotEmpty()) Text(extra.joinToString(" · "), style = MaterialTheme.typography.labelSmall)
+            val totals = ledgerTotals(reportRows)
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (totals.isEmpty() && missingRates > 0) Text(stringResource(R.string.fx_rate_pending), style = MaterialTheme.typography.titleMedium)
+                totals.chunked(2).forEach { pair ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        pair.forEach { total ->
+                            Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.large, modifier = Modifier.weight(1f).testTag("currency_total_${total.currency}")) {
+                                Column(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Text(stringResource(if (missingRates > 0) R.string.fx_partial else R.string.journal_spending), style = MaterialTheme.typography.labelSmall)
+                                    Text("${total.currency} ${total.expense.toPlainString()}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                    val extra = listOfNotNull(
+                                        if (total.income.signum() != 0) stringResource(R.string.journal_income_total, total.income.toPlainString()) else null,
+                                        if (total.refund.signum() != 0) stringResource(R.string.journal_refund_total, total.refund.toPlainString()) else null,
+                                        if (total.transfer.signum() != 0) stringResource(R.string.journal_transfer_excluded_total, total.transfer.toPlainString()) else null,
+                                    )
+                                    if (extra.isNotEmpty()) Text(extra.joinToString(" · "), style = MaterialTheme.typography.labelSmall)
+                                }
+                            }
                         }
+                        if (pair.size == 1 && totals.size > 1) Spacer(Modifier.weight(1f))
                     }
                 }
             }
@@ -156,21 +177,23 @@ internal fun Transactions(
                     Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(title, Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, maxLines = 2)
                         Text(pluralStringResource(R.plurals.journal_entry_count, group.entries.size, group.entries.size), Modifier.weight(0.65f).testTag("journal_group_count_$key"), style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center)
-                        val spending = ledgerTotals(group.entries).filter { it.expense.signum() != 0 }
-                        Text(if (spending.isEmpty()) stringResource(R.string.journal_no_spending) else spending.joinToString("\n") { "${it.currency} ${it.expense.toPlainString()}" }, Modifier.weight(1f).testTag("journal_group_total_$key"), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.End)
+                        val spending = ledgerTotals(group.entries.mapNotNull { reportById[it.id] }).filter { it.expense.signum() != 0 }
+                        val groupMissing = combined && group.entries.any { it.id !in reportById }
+                        val totalLabel = if (spending.isEmpty()) stringResource(if (groupMissing) R.string.fx_rate_pending else R.string.journal_no_spending) else spending.joinToString("\n") { "${it.currency} ${it.expense.toPlainString()}" }
+                        Text(totalLabel + if (groupMissing && spending.isNotEmpty()) "\n" + stringResource(R.string.fx_partial) else "", Modifier.weight(1f).testTag("journal_group_total_$key"), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.End)
                     }
                 }
             }
-            if (key !in collapsed) items(group.entries, key = { it.id }) { entry -> JournalRow(entry, categories, accounts, edit) }
+            if (key !in collapsed) items(group.entries, key = { it.id }) { entry -> JournalRow(entry, categories, accounts, edit, if (combined) fx else null) }
         }
     }
-    if (filters) ModalBottomSheet(onDismissRequest = { filters = false }) {
+    if (filters) ModalBottomSheet(onDismissRequest = { filters = false }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp).padding(bottom = 28.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(stringResource(R.string.filters), style = MaterialTheme.typography.headlineSmall)
             Choice(stringResource(R.string.category), category, listOf("" to stringResource(R.string.all), "none" to stringResource(R.string.uncategorized)) + categories.map { it.id to it.name }) { category = it }
             Choice(stringResource(R.string.account), account, listOf("" to stringResource(R.string.all), "none" to stringResource(R.string.unassigned)) + accounts.map { it.id to it.name }) { account = it }
             Choice(stringResource(R.string.kind), kind, listOf("" to stringResource(R.string.all)) + EntryKind.entries.map { it.name to kindLabel(it) }) { kind = it }
-            Choice(stringResource(R.string.currency), currency, listOf("" to stringResource(R.string.all)) + entries.filter { !it.deleted }.map { it.draft.currency }.distinct().sorted().map { it to it }) { currency = it }
+            Choice(stringResource(R.string.fx_original_currency), currency, listOf("" to stringResource(R.string.all)) + entries.filter { !it.deleted }.map { it.draft.currency }.distinct().sorted().map { it to it }) { currency = it }
             DateField(stringResource(R.string.from_date), start, allowBlank = true) { start = it }
             DateField(stringResource(R.string.to_date), end, allowBlank = true) { end = it }
             if (dateError) Text(stringResource(R.string.invalid_date_range), color = MaterialTheme.colorScheme.error)
@@ -180,12 +203,18 @@ internal fun Transactions(
 }
 
 @Composable
-private fun JournalRow(entry: LedgerEntry, categories: List<Category>, accounts: List<AccountLabel>, edit: (LedgerEntry) -> Unit) {
+private fun JournalRow(entry: LedgerEntry, categories: List<Category>, accounts: List<AccountLabel>, edit: (LedgerEntry) -> Unit, fx: com.fishese.moneyfly.fx.FxSnapshot? = null) {
     val draft = entry.draft
+    val conversion = fx?.convert(entry)
+    val amountLabel = if (conversion != null) "${fx.currency} ${conversion.amount.toPlainString()}" else "${draft.currency} ${draft.amount}"
     Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp).testTag("transaction_${entry.id}").clickable { edit(entry) }.padding(vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
             Text(draft.canonicalMerchant?.takeIf { it.isNotBlank() } ?: draft.merchant.ifBlank { stringResource(R.string.no_merchant) }, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
-            Text("${draft.currency} ${draft.amount}", Modifier.widthIn(max = 170.dp), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = if (draft.kind == EntryKind.INCOME || draft.kind == EntryKind.REFUND) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
+            Text(amountLabel, Modifier.widthIn(max = 170.dp), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = if (draft.kind == EntryKind.INCOME || draft.kind == EntryKind.REFUND) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
+        }
+        if (fx != null && draft.currency != fx.currency) {
+            Text(if (conversion != null) stringResource(R.string.fx_row_conversion, draft.currency, draft.amount, conversion.rate.toPlainString(), fx.currency, conversion.rateDate.toString(), stringResource(if (conversion.manual) R.string.fx_custom_label else R.string.fx_daily_label)) else stringResource(R.string.fx_rate_pending),
+                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Text("${kindLabel(draft.kind)} · ${categories.find { it.id == draft.categoryId }?.name ?: stringResource(R.string.uncategorized)} · ${accounts.find { it.id == draft.accountId }?.name ?: stringResource(R.string.unassigned)}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(draft.occurredAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT)), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

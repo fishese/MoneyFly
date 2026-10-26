@@ -15,11 +15,13 @@ internal object LedgerCodec {
         put("merchant", d.merchant); put("notes", d.notes); put("categoryId", d.categoryId ?: JSONObject.NULL); put("accountId", d.accountId ?: JSONObject.NULL)
         put("canonicalMerchant", d.canonicalMerchant ?: JSONObject.NULL); put("sourcePackage", d.sourcePackage ?: JSONObject.NULL)
         put("timeOrigin", d.timeOrigin.name); put("timePrecision", d.timePrecision.name); put("categoryOrigin", d.categoryOrigin.name)
+        put("exchangeRate", d.exchangeRate ?: JSONObject.NULL); put("exchangeRateCurrency", d.exchangeRateCurrency ?: JSONObject.NULL)
     }.toString()
     fun entry(json: String): LedgerEntry = JSONObject(json).let { j -> LedgerEntry(
         j.getString("id"), j.getLong("revision"), EntryDraft(j.getString("amount"), j.getString("currency"), EntryKind.valueOf(j.getString("kind")),
             Instant.parse(j.getString("occurredAt")), j.getString("merchant"), j.getString("notes"), j.nullable("categoryId"), j.nullable("accountId"),
-            j.nullable("canonicalMerchant"), j.nullable("sourcePackage"), TimeOrigin.valueOf(j.getString("timeOrigin")), TimePrecision.valueOf(j.getString("timePrecision")), CategoryOrigin.valueOf(j.getString("categoryOrigin"))),
+            j.nullable("canonicalMerchant"), j.nullable("sourcePackage"), TimeOrigin.valueOf(j.getString("timeOrigin")), TimePrecision.valueOf(j.getString("timePrecision")), CategoryOrigin.valueOf(j.getString("categoryOrigin")),
+            j.nullable("exchangeRate"), j.nullable("exchangeRateCurrency")),
         j.getBoolean("deleted"), Instant.parse(j.getString("createdAt")), Instant.parse(j.getString("updatedAt")), j.getString("lastOperationId")) }
     fun result(result: CommandResult): String = JSONObject().apply {
         put("status", result.status.name); put("entityId", result.entityId ?: JSONObject.NULL)

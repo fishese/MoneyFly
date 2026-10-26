@@ -18,6 +18,7 @@ data class EntryRow(
     val categoryId: String?, val accountId: String?, val canonicalMerchant: String?, val sourcePackage: String?,
     val timeOrigin: String, val timePrecision: String, val categoryOrigin: String,
     val deleted: Boolean, val createdAt: String, val updatedAt: String, val lastOperationId: String,
+    val exchangeRate: String? = null, val exchangeRateCurrency: String? = null,
 )
 @Entity(tableName = "categories")
 data class CategoryRow(@PrimaryKey val id: String, val name: String, val revision: Long)
@@ -69,7 +70,7 @@ interface LedgerDao {
 
 @Database(entities = [EntryRow::class, CategoryRow::class, AccountRow::class, AliasRow::class, RuleRow::class, OperationRow::class, RetiredEntityRow::class,
     NotificationSlotRow::class, ReceiptRow::class, RawRow::class, SourceRow::class, CaptureSettingsRow::class, ExpiredRevisionRow::class,
-    TemplateRow::class, RecognitionRow::class, IgnoreRuleRow::class], version = 6, exportSchema = true)
+    TemplateRow::class, RecognitionRow::class, IgnoreRuleRow::class], version = 7, exportSchema = true)
 abstract class LedgerDatabase : RoomDatabase() {
     abstract fun ledgerDao(): LedgerDao
     abstract fun inboxDao(): InboxDao

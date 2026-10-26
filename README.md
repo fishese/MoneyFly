@@ -1,8 +1,8 @@
 # MoneyFly
 
 A local Android expense journal with opt-in notification capture and user-reviewed
-payment templates. Matching notifications become editable drafts. Saving money to
-the journal always requires an explicit action.
+payment templates. Enabled templates record clear matching notifications; uncertain
+items stay in Inbox for review. Saved entries remain editable.
 
 ## Everyday use
 
@@ -15,8 +15,11 @@ the journal always requires an explicit action.
 - Group by date, category, merchant or account. Headers show the date/title,
   centered entry count and spending total on the right.
 - Tap the category chart for Pie, Bar or List, category shares and entry drill-down.
-  Currency totals stay separate. Charts count gross expenses and exclude refunds,
+  Choose combined totals in a reporting currency or separate currency cards. Charts
+  count gross expenses and exclude refunds,
   income, transfers and deleted entries.
+- Daily and historical exchange rates, manual refresh, original-currency filters,
+  and a card/custom rate per entry. See [Currencies](docs/CURRENCIES.md).
 - English and Traditional Chinese; light/dark themes follow the device.
 
 The financial ledger starts empty. Starter categories are created once without

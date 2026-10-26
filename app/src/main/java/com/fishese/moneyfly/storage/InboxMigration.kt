@@ -43,6 +43,13 @@ val LEDGER_MIGRATION_5_6: Migration = object : Migration(5, 6) {
     }
 }
 
+val LEDGER_MIGRATION_6_7: Migration = object : Migration(6, 7) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE ledger_entries ADD COLUMN exchangeRate TEXT")
+        db.execSQL("ALTER TABLE ledger_entries ADD COLUMN exchangeRateCurrency TEXT")
+    }
+}
+
 internal fun seedDefaultStatusRules(db: SupportSQLiteDatabase) {
     db.execSQL("INSERT OR IGNORE INTO ignore_rule_revisions (id, revision, name, sourcePackage, field, pattern, ignoreCase, enabled, deleted) SELECT 'default-status:' || sourcePackage || ':charging-full', 1, 'Charging status', sourcePackage, 'TITLE', 'Charging*', 1, 1, 0 FROM capture_sources WHERE sourcePackage IN ('android', 'com.android.systemui')")
     db.execSQL("INSERT OR IGNORE INTO ignore_rule_revisions (id, revision, name, sourcePackage, field, pattern, ignoreCase, enabled, deleted) SELECT 'default-status:android:zone-launcher', 1, 'Zone Launcher status', sourcePackage, 'TITLE', 'Zone Launcher *', 1, 1, 0 FROM capture_sources WHERE sourcePackage = 'android'")

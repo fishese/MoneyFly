@@ -127,7 +127,7 @@
     <string name="delete_template">Delete this template?</string>
     <string name="template_delete_hint">Future notifications will no longer use this template. Saved ledger entries remain unchanged.</string>
     <string name="repreview_item">Repreview this pending item</string>
-    <string name="currency_assumption">HKD is your manual default, not a currency detected from this notification. Confirm or change it before saving.</string>
+    <string name="currency_assumption">%1$s is the manual-entry default, not a currency identified from this notification. Confirm or change it before saving.</string>
     <string name="filters">Filters</string>
     <string name="clear_all">Clear all</string>
     <string name="all">All</string>
@@ -206,4 +206,30 @@
     <string name="template_case_insensitive">Ignore case</string>
     <string name="template_currency_literal">Currency is explicitly present in the matched format.</string>
     <string name="template_apply_report">Checked: %1$d · Matched: %2$d\nRecorded: %3$d · Review: %4$d · No match: %5$d</string>
+    <string name="fx_reporting_currency">Reporting currency</string>
+    <string name="fx_original_currency">Original currency</string>
+    <string name="fx_search_currency">Find a currency</string>
+    <string name="fx_default_hint">Starts at HKD and uses the first imported entry currency until you choose a currency here.</string>
+    <string name="fx_provider_hint">Frankfurter daily reference rates use each entry date. Refresh also rechecks historical rates. Card rates may differ.</string>
+    <string name="fx_privacy">Only currency codes and dates are requested. Amounts, merchants and notification contents stay on this device.</string>
+    <string name="fx_last_checked">Rates last checked: %1$s</string>
+    <string name="fx_refresh">Refresh exchange rates</string>
+    <string name="fx_refresh_short">Refresh rates</string>
+    <string name="fx_refreshing">Updating rates…</string>
+    <string name="fx_refresh_failed">Some rates could not be updated. Cached rates remain available; missing rates can be entered manually.</string>
+    <string name="fx_entry_rate">Exchange rate</string>
+    <string name="fx_custom_rate">Use a card or custom rate</string>
+    <string name="fx_rate_target">Convert into</string>
+    <string name="fx_rate_direction">%2$s per 1 %1$s</string>
+    <string name="fx_rate_help">Applies only to this entry and target currency. Enter the rate used by your card or statement.</string>
+    <string name="fx_invalid_rate">Enter a positive decimal rate, with at most 18 decimal places.</string>
+    <string name="fx_auto_rate">Daily rate (%4$s): 1 %1$s = %2$s %3$s</string>
+    <string name="fx_rate_pending">Exchange rate unavailable</string>
+    <string name="fx_combined">Combined (%1$s)</string>
+    <string name="fx_separate">Separate</string>
+    <string name="fx_missing_count">Missing rates: %1$d. Combined totals exclude those entries until a rate is available.</string>
+    <string name="fx_partial">Partial total</string>
+    <string name="fx_custom_label">Custom rate</string>
+    <string name="fx_daily_label">Daily rate</string>
+    <string name="fx_row_conversion">%1$s %2$s · 1 %1$s = %3$s %4$s · %5$s · %6$s</string>
 </resources>

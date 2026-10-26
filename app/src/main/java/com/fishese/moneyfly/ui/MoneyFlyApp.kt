@@ -47,9 +47,15 @@ import kotlinx.coroutines.flow.flowOf
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MoneyFlyApp(store: LedgerStore, captureController: CaptureController? = null) {
+fun MoneyFlyApp(store: LedgerStore, captureController: CaptureController? = null, fxRepository: com.fishese.moneyfly.fx.FxRepository? = null) {
     MoneyFlyTheme {
         val entries by store.entries.collectAsStateWithLifecycle(emptyList())
+        val fxFlow = remember(fxRepository) { fxRepository?.state ?: flowOf(com.fishese.moneyfly.fx.FxSnapshot()) }
+        val fxState by fxFlow.collectAsStateWithLifecycle(com.fishese.moneyfly.fx.FxSnapshot())
+        LaunchedEffect(fxRepository, entries, fxState.currency) {
+            fxRepository?.initialize(entries)
+            fxRepository?.refresh(entries)
+        }
         val categories by store.categories.collectAsStateWithLifecycle(emptyList())
         val accounts by store.accounts.collectAsStateWithLifecycle(emptyList())
         val aliases by store.aliases.collectAsStateWithLifecycle(emptyList())
@@ -127,11 +133,14 @@ fun MoneyFlyApp(store: LedgerStore, captureController: CaptureController? = null
             floatingActionButton = { if (destination == 0) ExtendedFloatingActionButton(modifier = Modifier.testTag("add_entry").semantics { contentDescription = addExpenseLabel }, onClick = { editorId = "new"; editingRevision = 0 }, icon = { Icon(Icons.Default.Add, null) }, text = { Text(addExpenseLabel) }, containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary) },
         ) { padding ->
             when (destination) {
-                0 -> Transactions(entries, categories, accounts, Modifier.padding(padding), pendingCount = pendingCount, onPendingInbox = { destination = 1 }) { editorId = it.id; editingRevision = it.revision }
+                0 -> Transactions(entries, categories, accounts, Modifier.padding(padding), pendingCount = pendingCount, onPendingInbox = { destination = 1 },
+                    fx = if (fxRepository == null) null else fxState,
+                    changeDisplay = { separate -> scope.launch { fxRepository?.setSeparate(separate) } },
+                    refreshRates = { scope.launch { fxRepository?.refresh(entries, force = true) } }) { editorId = it.id; editingRevision = it.revision }
                 1 -> InboxScreen(inboxStore, captureController, inbox, sources, entries, Modifier.padding(padding), templates.isNotEmpty(), execute = { command, applied -> run(command, onApplied = applied) },
                     record = { receipt, separate -> receiptId = receipt.id; receiptRevision = receipt.revision; separatePurchase = separate },
                     viewEntry = { entry -> editorId = entry.id; editingRevision = entry.revision }, createTemplate = { templateReceiptId = it.id })
-                2 -> Settings(categories, accounts, aliases, rules, sources, templates, ignoreRules, Modifier.padding(padding), store) { command, done -> run(command, done = done) }
+                2 -> Settings(categories, accounts, aliases, rules, sources, templates, ignoreRules, Modifier.padding(padding), store, fxRepository, fxState, entries) { command, done -> run(command, done = done) }
             }
         }
         editorId?.let { id ->
@@ -149,13 +158,13 @@ fun MoneyFlyApp(store: LedgerStore, captureController: CaptureController? = null
                         }
                     }
                 },
-                delete = { if (entry != null) run(LedgerCommand.Delete(entry.id, editingRevision), true, done = { editorId = null }) }, recentEntries = entries)
+                delete = { if (entry != null) run(LedgerCommand.Delete(entry.id, editingRevision), true, done = { editorId = null }) }, recentEntries = entries, reportingCurrency = fxState.currency, fx = fxState)
         }
         receiptId?.let { id ->
             val receipt = inbox.find { it.id == id }
             if (receipt != null) EntryEditor("receipt-$id", 0, null, categories, accounts, aliases, rules, store,
                 close = { receiptId = null }, saved = { _, _ -> receiptId = null }, delete = {},
-                receipt = receipt, receiptRevision = receiptRevision, separatePurchase = separatePurchase, recentEntries = entries)
+                receipt = receipt, receiptRevision = receiptRevision, separatePurchase = separatePurchase, recentEntries = entries, reportingCurrency = fxState.currency, fx = fxState)
         }
         templateReceiptId?.let { id ->
             val item = inbox.find { it.id == id }
@@ -198,13 +207,17 @@ internal fun DateField(label: String, value: String, allowBlank: Boolean = false
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun Settings(categories: List<Category>, accounts: List<AccountLabel>, aliases: List<MerchantAlias>, rules: List<CategoryRule>, sources: List<SourcePreference>, templates: List<TemplateDefinition>, ignoreRules: List<IgnoreRule>, modifier: Modifier, store: LedgerStore, execute: (LedgerCommand, () -> Unit) -> Unit) {
+private fun Settings(categories: List<Category>, accounts: List<AccountLabel>, aliases: List<MerchantAlias>, rules: List<CategoryRule>, sources: List<SourcePreference>, templates: List<TemplateDefinition>, ignoreRules: List<IgnoreRule>, modifier: Modifier, store: LedgerStore, fxRepository: com.fishese.moneyfly.fx.FxRepository?, fxState: com.fishese.moneyfly.fx.FxSnapshot, entries: List<LedgerEntry>, execute: (LedgerCommand, () -> Unit) -> Unit) {
     var section by rememberSaveable { mutableIntStateOf(0) }
     var editId by rememberSaveable { mutableStateOf<String?>(null) }
     var search by rememberSaveable { mutableStateOf("") }
     val headings = listOf(R.string.categories, R.string.accounts, R.string.aliases, R.string.rules)
     LazyColumn(modifier.fillMaxSize().testTag("settings_list"), contentPadding = PaddingValues(20.dp, 0.dp, 20.dp, 100.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
+            if (fxRepository != null) {
+                FxSettings(fxRepository, fxState, entries)
+                Spacer(Modifier.height(20.dp))
+            }
             Text(stringResource(R.string.shell_organize), style = MaterialTheme.typography.headlineMedium)
             Text(stringResource(R.string.shell_organize_hint), Modifier.padding(vertical = 10.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

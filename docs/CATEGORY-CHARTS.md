@@ -9,7 +9,8 @@ catalog plus custom creation, available from Settings and the entry picker.
 Transactions includes a compact category chart for the current filtered view.
 Tap to open Pie, Bar or List; tap a slice/category for exact amount, rounded share,
 entry count and recent entries. Show these entries filters the journal by category,
-currency and Expense. Currencies stay separate. The chart measures gross expenses;
+Expense and the current original-currency filter. Reporting supports combined
+currency conversion or separate currencies (see [Currencies](CURRENCIES.md)). The chart measures gross expenses;
 income, refunds, transfers and deleted entries are excluded. Decimal sums remain
 exact; floating point is used only to draw ratios. Percentages round independently.
 

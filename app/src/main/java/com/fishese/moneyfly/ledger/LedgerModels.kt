@@ -26,6 +26,7 @@ data class EntryDraft(
     val canonicalMerchant: String? = null, val sourcePackage: String? = null,
     val timeOrigin: TimeOrigin = TimeOrigin.USER, val timePrecision: TimePrecision = TimePrecision.EXACT,
     val categoryOrigin: CategoryOrigin = if (categoryId == null) CategoryOrigin.UNASSIGNED else CategoryOrigin.EXPLICIT,
+    val exchangeRate: String? = null, val exchangeRateCurrency: String? = null,
 )
 
 data class LedgerEntry(

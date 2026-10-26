@@ -16,9 +16,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         InboxRetentionWorker.schedule(this)
+        com.fishese.moneyfly.fx.FxRateWorker.schedule(this)
         val store = (application as MoneyFlyApplication).ledgerStore
         lifecycleScope.launch(Dispatchers.IO) { seedExpenseCategories(this@MainActivity, store) }
-        setContent { MoneyFlyApp(store, (application as MoneyFlyApplication).captureController) }
+        setContent { MoneyFlyApp(store, (application as MoneyFlyApplication).captureController, (application as MoneyFlyApplication).fxRepository) }
     }
 
     override fun onResume() {

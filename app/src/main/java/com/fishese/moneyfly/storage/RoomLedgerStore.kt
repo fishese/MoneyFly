@@ -244,7 +244,8 @@ class RoomLedgerStore(private val database: LedgerDatabase,
         require(draft.categoryId == null || dao.category(draft.categoryId) != null) { "The category no longer exists." }
         require(draft.accountId == null || dao.account(draft.accountId) != null) { "The account label no longer exists." }
         require(draft.merchant.length <= 2000 && draft.notes.length <= 20000) { "Merchant or notes are too long." }
-        return draft.copy(amount = normalized, categoryOrigin = if (draft.categoryId == null) CategoryOrigin.UNASSIGNED else draft.categoryOrigin)
+        val rate = com.fishese.moneyfly.fx.validatedEntryRate(draft.exchangeRate, draft.exchangeRateCurrency)
+        return draft.copy(amount = normalized, exchangeRate = rate, categoryOrigin = if (draft.categoryId == null) CategoryOrigin.UNASSIGNED else draft.categoryOrigin)
     }
     private fun validId(id: String): String { require(id.isNotBlank() && id.length <= 200) { "A valid ID is required." }; return id }
     private suspend fun requireNotRetired(kind: String, id: String) { require(dao.retired(kind, id) == null) { "This item was deleted. Create a new item instead." } }
@@ -263,7 +264,7 @@ class RoomLedgerStore(private val database: LedgerDatabase,
     companion object {
         /** A new app-owned database; deliberately has no old-database migrations or imports. */
         fun open(context: Context): RoomLedgerStore = RoomLedgerStore(Room.databaseBuilder(context.applicationContext, LedgerDatabase::class.java, "moneyfly_next_ledger_v1.db")
-            .addMigrations(LEDGER_MIGRATION_1_2, LEDGER_MIGRATION_2_3, LEDGER_MIGRATION_3_4, LEDGER_MIGRATION_4_5, LEDGER_MIGRATION_5_6)
+            .addMigrations(LEDGER_MIGRATION_1_2, LEDGER_MIGRATION_2_3, LEDGER_MIGRATION_3_4, LEDGER_MIGRATION_4_5, LEDGER_MIGRATION_5_6, LEDGER_MIGRATION_6_7)
             .addCallback(object : androidx.room.RoomDatabase.Callback() {
                 override fun onOpen(db: androidx.sqlite.db.SupportSQLiteDatabase) { seedDefaultStatusRules(db) }
             }).build())
@@ -272,8 +273,8 @@ class RoomLedgerStore(private val database: LedgerDatabase,
 
 internal fun EntryRow.toEntry() = LedgerEntry(id, revision,
     EntryDraft(amount, currency, EntryKind.valueOf(kind), Instant.parse(occurredAt), merchant, notes, categoryId, accountId,
-        canonicalMerchant, sourcePackage, TimeOrigin.valueOf(timeOrigin), TimePrecision.valueOf(timePrecision), CategoryOrigin.valueOf(categoryOrigin)),
+        canonicalMerchant, sourcePackage, TimeOrigin.valueOf(timeOrigin), TimePrecision.valueOf(timePrecision), CategoryOrigin.valueOf(categoryOrigin), exchangeRate, exchangeRateCurrency),
     deleted, Instant.parse(createdAt), Instant.parse(updatedAt), lastOperationId)
 internal fun LedgerEntry.toRow(): EntryRow = draft.let { d -> EntryRow(id, revision, d.amount, d.currency, d.kind.name, d.occurredAt.toString(), d.merchant, d.notes,
     d.categoryId, d.accountId, d.canonicalMerchant, d.sourcePackage, d.timeOrigin.name, d.timePrecision.name, d.categoryOrigin.name,
-    deleted, createdAt.toString(), updatedAt.toString(), lastOperationId) }
+    deleted, createdAt.toString(), updatedAt.toString(), lastOperationId, d.exchangeRate, d.exchangeRateCurrency) }
