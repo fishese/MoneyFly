@@ -44,7 +44,7 @@ class TemplateStoreTest {
     }
     private suspend fun enableCapture() { assertTrue(store.execute(LedgerCommand.SetCaptureConsent(true, 0)).applied) }
 
-    @Test fun clearMatchAutomaticallySavesOnceAndDuplicateOrChangedNotificationsNeedReview() = runBlocking {
+    @Test fun clearMatchAutomaticallySavesOnceAndChangedMatchStillChecksForDuplicates() = runBlocking {
         enableCapture(); store.execute(LedgerCommand.PutTemplate(definition()))
         val command = LedgerCommand.CaptureNotification(payload("automatic"), "automatic-operation")
         assertTrue(store.execute(command).applied)
@@ -58,10 +58,10 @@ class TemplateStoreTest {
         assertTrue(duplicate.issues.any { it.contains("duplicate") })
         val changed = payload("automatic").copy(body = "Paid 23.45 at SYNTHETIC SHOP.")
         store.execute(LedgerCommand.CaptureNotification(changed))
-        assertEquals(InboxStatus.REVIEW_NEEDED, store.inbox.first().single { it.contentRevision == 2 }.status)
-        assertEquals(1, store.entries.first().size)
+        assertEquals(InboxStatus.SAVED, store.inbox.first().single { it.contentRevision == 2 }.status)
+        assertEquals(2, store.entries.first().size)
         db.close(); reopen()
-        assertEquals(1, store.entries.first().size)
+        assertEquals(2, store.entries.first().size)
         assertTrue(store.execute(command).replayed)
     }
 
@@ -127,7 +127,7 @@ class TemplateStoreTest {
         assertEquals(2, store.entries.first().size)
         assertTrue(store.execute(command).replayed)
     }
-    @Test fun backfillSkipsIgnoredChangedAndDuplicateMessagesEvenWhenCapturePaused() = runBlocking {
+    @Test fun backfillUsesLatestRevisionSkipsIgnoredAndStillChecksDuplicatesWhenCapturePaused() = runBlocking {
         enableCapture()
         val first = capture("first")
         val duplicate = capture("duplicate")
@@ -137,12 +137,14 @@ class TemplateStoreTest {
         store.execute(LedgerCommand.CaptureNotification(payload("changed").copy(body = "Paid 45.67 at SYNTHETIC CHANGED.")))
         store.execute(LedgerCommand.SetCaptureConsent(false, 1))
         store.execute(LedgerCommand.PutTemplate(definition()))
-        assertEquals(1, store.entries.first().size)
+        assertEquals(2, store.entries.first().size)
         val items = store.inbox.first()
         assertEquals(1, items.count { it.id in setOf(first.id, duplicate.id) && it.status == InboxStatus.SAVED })
         assertEquals(1, items.count { it.id in setOf(first.id, duplicate.id) && it.status == InboxStatus.REVIEW_NEEDED })
         assertEquals(InboxStatus.IGNORED, items.single { it.id == ignored.id }.status)
-        assertTrue(items.filter { it.requiresRevisionDecision || it.payload?.body?.contains("CHANGED") == true }.none { it.status == InboxStatus.SAVED })
+        val changedEntry = items.single { it.payload?.body?.contains("CHANGED") == true }
+        assertTrue(changedEntry.requiresRevisionDecision)
+        assertEquals(InboxStatus.SAVED, changedEntry.status)
     }
     @Test fun savedAssumptionKeepsCompactTemplateVersionAfterRawAndDerivedDraftExpire() = runBlocking {
         enableCapture(); store.execute(LedgerCommand.PutTemplate(definition()))

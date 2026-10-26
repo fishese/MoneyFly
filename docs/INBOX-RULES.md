@@ -9,12 +9,13 @@ redacted and truncated notifications remain in Inbox for review. Duplicate
 suggestions never automatically merge two purchases. A repeated amount without
 a merchant is also held for review when a nearby entry could be the same payment.
 
-Saving or enabling a template also applies it to retained pending messages from
-that app, including the current example. Clear matches are booked immediately,
-even when new notification capture is paused. Saved, individually ignored,
-rule-ignored, app-ignored and expired items are excluded. Changed notifications
-and possible duplicates remain pending. Explicit re-preview updates a draft only. Disable a template or source parsing
-to pause future automatic recording. Existing entries stay editable and unchanged.
+Saving or enabling a template also applies it to the latest retained pending
+version of each notification from that app, including the current example. Clear
+matches are booked immediately, even when new notification capture is paused.
+Older superseded versions, saved items, individually ignored, rule-ignored,
+app-ignored and expired items are excluded. Possible duplicates remain pending
+for review. Disable a template or source parsing to pause future automatic
+recording. Existing entries stay editable and unchanged.
 Saved receipts retain the template ID/revision after retained raw content expires.
 
 ## Ignore similar messages

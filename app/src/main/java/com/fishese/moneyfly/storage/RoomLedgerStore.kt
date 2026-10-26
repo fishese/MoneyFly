@@ -38,6 +38,7 @@ class RoomLedgerStore(private val database: LedgerDatabase,
         val rawById = raw.filter { it.capturedAt > cutoff }.associateBy { it.receiptId }
         val ignoredSources = sources.filter { it.ignored }.map { it.sourcePackage }.toSet()
         val recognitionById = recognition.associateBy { it.receiptId }
+        val receiptsByEpisode = receipts.groupBy { it.episodeId }
         val compiledIgnoreRules = ignoreRuleRows.mapNotNull { IgnoreRuleMatcher.compile(it.toRule()) }
         val appIgnoreRules = compiledIgnoreRules.filter { it.rule.sameAppOnly }.groupBy { it.rule.sourcePackage }
         val crossAppIgnoreRules = compiledIgnoreRules.filterNot { it.rule.sameAppOnly }
@@ -59,9 +60,10 @@ class RoomLedgerStore(private val database: LedgerDatabase,
                     recognized?.status == RecognitionStatus.READY -> InboxStatus.READY
                     else -> InboxStatus.UNRECOGNIZED
                 }
+                val relatedReceipts = receiptsByEpisode[row.episodeId].orEmpty().filter { it.id != row.id }
                 InboxItem(row.id, row.revision, row.sourcePackage, Instant.parse(row.postedAt), Instant.parse(row.observedAt), row.contentRevision,
                     status, payload, row.entryId,
-                    receipts.filter { it.episodeId == row.episodeId && it.id != row.id }.mapNotNull { it.entryId }.distinct(), row.contentRevision > 1,
+                    relatedReceipts.mapNotNull { it.entryId }.distinct(), row.contentRevision > 1 || relatedReceipts.any { it.contentRevision > row.contentRevision },
                     recognized?.draft, recognized?.issues.orEmpty(), provenance?.templateId, provenance?.templateRevision,
                     ignoreRule?.id, ignoreRule?.revision)
             }

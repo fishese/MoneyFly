@@ -39,9 +39,10 @@ Narrow system charging/launcher status rules are reversible defaults.
 
 Templates extract changing amounts, merchants and optional fields. Matching
 suggestions are optional and must pass current-message and synthetic variation
-checks. New clear matches record automatically. Changed notifications, possible duplicates,
-ambiguous, grouped or incomplete notifications require review. Saving an enabled
-template also applies it to retained pending messages. Event-time interpretation and account assignment
+checks. New clear matches record automatically. Saving an enabled template also
+applies it to the latest retained pending version of each notification. Older
+versions, possible duplicates, ambiguous, grouped or incomplete notifications
+remain available for review. Event-time interpretation and account assignment
 remain explicit; posting time is labeled when used as a fallback.
 
 ## Build

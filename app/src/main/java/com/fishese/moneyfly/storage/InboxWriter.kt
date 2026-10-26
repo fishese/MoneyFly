@@ -124,8 +124,10 @@ internal class InboxWriter(private val dao: InboxDao, private val ledger: Ledger
     suspend fun applyTemplateToPending(sourcePackage: String, now: Instant, operationId: String, validate: suspend (EntryDraft) -> EntryDraft) {
         if (dao.source(sourcePackage)?.ignored == true) return
         val compiled = ignoreRules.currentCompiled()
-        val pending = dao.receipts().first().filter { it.sourcePackage == sourcePackage && it.settlement == null && !it.removed }
+        val episodeReceipts = dao.receipts().first()
+        val pending = episodeReceipts.filter { it.sourcePackage == sourcePackage && it.settlement == null && !it.removed }
             .sortedWith(compareBy<ReceiptRow> { it.postedAt }.thenBy { it.id })
+        val latestRevisionByEpisode = episodeReceipts.groupBy { it.episodeId }.mapValues { (_, rows) -> rows.maxOf { it.contentRevision } }
         for (row in pending) {
             val raw = dao.rawOnce(row.id) ?: continue
             val payload = InboxRawCodec.decode(raw.payload, row)
@@ -134,7 +136,11 @@ internal class InboxWriter(private val dao: InboxDao, private val ledger: Ledger
             // Invalidate any old editor/review snapshot even if this match remains pending.
             val revised = row.copy(revision = row.revision + 1)
             dao.putReceipt(revised)
-            recordIfClear(revised, payload, recognized, now, operationId, validate)
+            if (row.contentRevision < latestRevisionByEpisode[row.episodeId]!!) {
+                templates.requireReview(revised, recognized, "A newer notification update exists. Review the latest version before recording.")
+            } else {
+                recordIfClear(revised, payload, recognized, now, operationId, validate)
+            }
         }
     }
 
@@ -142,10 +148,6 @@ internal class InboxWriter(private val dao: InboxDao, private val ledger: Ledger
         now: Instant, operationId: String, validate: suspend (EntryDraft) -> EntryDraft) {
         val ignored = IgnoreRuleMatcher.matchingRule(p, ignoreRules.currentCompiled()) != null
         if (!ignored && recognized.status == RecognitionStatus.READY && recognized.draft != null) {
-            if (row.contentRevision > 1 || dao.episodeReceipts(row.episodeId).any { it.contentRevision > 1 || it.entryId != null } || dao.expiredRevisions(row.episodeId).isNotEmpty()) {
-                templates.requireReview(row, recognized, "This notification changed. Review its revisions before recording.")
-                return
-            }
             val draft = try { validate(recognized.draft.copy(sourcePackage = p.sourcePackage)) } catch (_: IllegalArgumentException) { null }
             if (draft == null) templates.requireReview(row, recognized, "The matched entry needs review before saving.")
             else {
