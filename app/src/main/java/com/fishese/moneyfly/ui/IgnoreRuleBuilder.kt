@@ -44,13 +44,14 @@ internal fun IgnoreRuleBuilder(
     sourceName: String = item.sourcePackage,
     close: () -> Unit,
 ) {
-    val defaultName = stringResource(R.string.ignore_rule_default_name)
+    val defaultName = stringResource(if (item.payload?.groupSummary == true) R.string.ignore_summary_only else R.string.ignore_rule_default_name)
     var name by rememberSaveable(item.id) { mutableStateOf(defaultName) }
     var fieldName by rememberSaveable(item.id) { mutableStateOf(MessageField.TITLE.name) }
     var pattern by rememberSaveable(item.id) { mutableStateOf(suggestedIgnorePattern(item.payload, MessageField.TITLE)) }
     var patternEdited by rememberSaveable(item.id) { mutableStateOf(false) }
     var ignoreCase by rememberSaveable(item.id) { mutableStateOf(true) }
     var sameAppOnly by rememberSaveable(item.id) { mutableStateOf(true) }
+    var summaryOnly by rememberSaveable(item.id) { mutableStateOf(item.payload?.groupSummary == true) }
     var previewCount by rememberSaveable(item.id) { mutableStateOf<Int?>(null) }
     var busy by remember { mutableStateOf(false) }
     var retryLocked by rememberSaveable(item.id) { mutableStateOf(false) }
@@ -59,7 +60,7 @@ internal fun IgnoreRuleBuilder(
     val id = rememberSaveable(item.id) { UUID.randomUUID().toString() }
     val operationId = rememberSaveable(item.id) { UUID.randomUUID().toString() }
     val field = MessageField.valueOf(fieldName)
-    val rule = IgnoreRule(id, name.trim(), item.sourcePackage, field, pattern, ignoreCase, sameAppOnly = sameAppOnly)
+    val rule = IgnoreRule(id, name.trim(), item.sourcePackage, field, if (summaryOnly) "" else pattern, ignoreCase, sameAppOnly = sameAppOnly, summaryOnly = summaryOnly)
     val errors = IgnoreRuleMatcher.validate(rule)
     val scope = rememberCoroutineScope()
     val saveFailed = stringResource(R.string.ignore_rule_save_failed)
@@ -75,31 +76,38 @@ internal fun IgnoreRuleBuilder(
                 Text(stringResource(R.string.ignore_similar_explanation))
                 Text(stringResource(R.string.ignore_rule_app, sourceName), style = MaterialTheme.typography.labelMedium)
                 Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    Text(stringResource(R.string.ignore_summary_only), Modifier.weight(1f))
+                    Switch(summaryOnly, { summaryOnly = it; changed() }, enabled = editable, modifier = Modifier.testTag("ignore_rule_summary_only"))
+                }
+                Text(stringResource(if (summaryOnly) R.string.ignore_summary_hint else R.string.ignore_summary_available), style = MaterialTheme.typography.bodySmall)
+                Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                     Text(stringResource(R.string.ignore_rule_same_app), Modifier.weight(1f))
                     Switch(sameAppOnly, { sameAppOnly = it; changed() }, enabled = editable, modifier = Modifier.testTag("ignore_rule_same_app"))
                 }
                 if (!sameAppOnly) Text(stringResource(R.string.ignore_rule_all_apps_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                 OutlinedTextField(name, { name = it; changed() }, label = { Text(stringResource(R.string.ignore_rule_name)) }, singleLine = true, enabled = editable, modifier = Modifier.fillMaxWidth().testTag("ignore_rule_name"))
-                Choice(
-                    stringResource(R.string.ignore_rule_field), fieldName,
-                    MessageField.entries.map { it.name to stringResource(ignoreFieldLabel(it)) },
-                    enabled = editable,
-                ) { fieldName = it; if (!patternEdited) pattern = suggestedIgnorePattern(item.payload, MessageField.valueOf(it)); changed() }
-                OutlinedTextField(
-                    pattern, { pattern = it; patternEdited = true; changed() },
-                    label = { Text(stringResource(R.string.ignore_rule_pattern)) },
-                    supportingText = { Text(stringResource(R.string.ignore_rule_pattern_hint)) },
-                    enabled = editable, modifier = Modifier.fillMaxWidth().testTag("ignore_rule_pattern"),
-                )
-                Text(stringResource(R.string.ignore_rule_draft_hint), style = MaterialTheme.typography.bodySmall)
-                Text(stringResource(R.string.ignore_rule_current_text), style = MaterialTheme.typography.labelLarge)
-                val currentText = item.payload?.let { fieldText(it, field) }.orEmpty()
-                SelectionContainer {
-                    Text(currentText.ifBlank { stringResource(R.string.ignore_rule_empty_field) }, modifier = Modifier.testTag("ignore_rule_current_message"))
-                }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(stringResource(R.string.ignore_rule_ignore_case), Modifier.weight(1f))
-                    Switch(ignoreCase, { ignoreCase = it; changed() }, enabled = editable, modifier = Modifier.testTag("ignore_rule_case"))
+                if (!summaryOnly) {
+                    Choice(
+                        stringResource(R.string.ignore_rule_field), fieldName,
+                        MessageField.entries.map { it.name to stringResource(ignoreFieldLabel(it)) },
+                        enabled = editable,
+                    ) { fieldName = it; if (!patternEdited) pattern = suggestedIgnorePattern(item.payload, MessageField.valueOf(it)); changed() }
+                    OutlinedTextField(
+                        pattern, { pattern = it; patternEdited = true; changed() },
+                        label = { Text(stringResource(R.string.ignore_rule_pattern)) },
+                        supportingText = { Text(stringResource(R.string.ignore_rule_pattern_hint)) },
+                        enabled = editable, modifier = Modifier.fillMaxWidth().testTag("ignore_rule_pattern"),
+                    )
+                    Text(stringResource(R.string.ignore_rule_draft_hint), style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.ignore_rule_current_text), style = MaterialTheme.typography.labelLarge)
+                    val currentText = item.payload?.let { fieldText(it, field) }.orEmpty()
+                    SelectionContainer {
+                        Text(currentText.ifBlank { stringResource(R.string.ignore_rule_empty_field) }, modifier = Modifier.testTag("ignore_rule_current_message"))
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(stringResource(R.string.ignore_rule_ignore_case), Modifier.weight(1f))
+                        Switch(ignoreCase, { ignoreCase = it; changed() }, enabled = editable, modifier = Modifier.testTag("ignore_rule_case"))
+                    }
                 }
                 if (errors.isNotEmpty() && pattern.isNotEmpty()) Text(errors.joinToString(" "), color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("ignore_rule_error"))
                 OutlinedButton(
@@ -157,7 +165,7 @@ internal fun IgnoreRuleSettings(rules: List<IgnoreRule>, execute: (LedgerCommand
             Surface(Modifier.fillMaxWidth().testTag("ignore_rule_${rule.id}"), shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surfaceContainerLow) {
                 Column(Modifier.padding(12.dp)) {
                     Text(rule.name, style = MaterialTheme.typography.titleSmall)
-                    Text(stringResource(R.string.ignore_rule_summary, if (rule.sameAppOnly) rule.sourcePackage else stringResource(R.string.ignore_rule_all_apps), stringResource(ignoreFieldLabel(rule.field)), rule.pattern), style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.ignore_rule_summary, if (rule.sameAppOnly) rule.sourcePackage else stringResource(R.string.ignore_rule_all_apps), stringResource(if (rule.summaryOnly) R.string.ignore_summary_only else ignoreFieldLabel(rule.field)), rule.pattern), style = MaterialTheme.typography.bodySmall)
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Switch(rule.enabled, { execute(LedgerCommand.SetIgnoreRuleEnabled(rule.id, rule.revision, it)) }, modifier = Modifier.testTag("toggle_ignore_rule_${rule.id}"))
                         TextButton(onClick = { deleteRule = rule }) { Text(stringResource(R.string.delete)) }

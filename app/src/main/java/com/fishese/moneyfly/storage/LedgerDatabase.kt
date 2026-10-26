@@ -69,7 +69,7 @@ interface LedgerDao {
 
 @Database(entities = [EntryRow::class, CategoryRow::class, AccountRow::class, AliasRow::class, RuleRow::class, OperationRow::class, RetiredEntityRow::class,
     NotificationSlotRow::class, ReceiptRow::class, RawRow::class, SourceRow::class, CaptureSettingsRow::class, ExpiredRevisionRow::class,
-    TemplateRow::class, RecognitionRow::class, IgnoreRuleRow::class], version = 5, exportSchema = true)
+    TemplateRow::class, RecognitionRow::class, IgnoreRuleRow::class], version = 6, exportSchema = true)
 abstract class LedgerDatabase : RoomDatabase() {
     abstract fun ledgerDao(): LedgerDao
     abstract fun inboxDao(): InboxDao

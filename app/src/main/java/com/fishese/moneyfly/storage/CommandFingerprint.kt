@@ -71,6 +71,7 @@ internal object CommandFingerprint {
                     add(r.pattern); add(r.ignoreCase); add(r.enabled); add(r.revision); add(command.expectedRevision)
                     // Preserve pre-v5 fingerprints for the default app-scoped behavior.
                     if (!r.sameAppOnly) { add("cross-app"); add(false) }
+                    if (r.summaryOnly) { add("summary-only"); add(true) }
                 }
                 is LedgerCommand.SetIgnoreRuleEnabled -> { add("set-ignore-rule-enabled"); add(command.ruleId); add(command.expectedRevision); add(command.enabled) }
                 is LedgerCommand.DeleteIgnoreRule -> { add("delete-ignore-rule"); add(command.ruleId); add(command.expectedRevision) }

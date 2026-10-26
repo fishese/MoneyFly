@@ -1,74 +1,43 @@
-# Inbox rules and suggested templates — 0.5.1
+# Notification recording and ignore rules
 
-The follow-up menus include the resolved app name in brackets, falling back to
-the package if unavailable. Similar-message setup proposes a known status pattern
-or a conservative exact-field draft. Text with literal wildcard characters or
-long/multiline content is left for manual selection, rather than broadened
-automatically. The current selected field is shown as selectable, copyable text
-on the device. A draft is editable and still requires explicit match review and
-Save; an edited pattern is not overwritten when switching notification fields.
-All 114 tests pass, lint has 0 errors and 13 warnings, and the signed build is
-`artifacts/moneyfly-0.5.1-dev.apk` (version code 6).
+Enabled templates automatically record new notifications with a clear match.
+Capture consent and source parsing must be enabled. Entries and receipt settlement
+commit together in the ledger transaction. Replayed delivery does not book twice.
 
-This update separates one retained message, a recurring message format, and an
-entire source app. No actual notification text, financial values, merchant names,
-screenshots, or saved phone UI dumps are included in this review.
+Changed notifications, possible duplicates, conflicting templates, summary,
+redacted and truncated notifications remain in Inbox for review. Duplicate
+suggestions never automatically merge two purchases. A repeated amount without
+a merchant is also held for review when a nearby entry could be the same payment.
 
-## Actions
+Saving or enabling a template also applies it to retained pending messages from
+that app, including the current example. Clear matches are booked immediately,
+even when new notification capture is paused. Saved, individually ignored,
+rule-ignored, app-ignored and expired items are excluded. Changed notifications
+and possible duplicates remain pending. Explicit re-preview updates a draft only. Disable a template or source parsing
+to pause future automatic recording. Existing entries stay editable and unchanged.
+Saved receipts retain the template ID/revision after retained raw content expires.
 
-For left-to-right layouts, swipe left to reveal **Ignore: This / Similar / App**;
-swipe right to reveal **Record: Entry / Template**. A completed swipe opens choices
-and does not mutate a message. The More actions menu provides equivalent controls.
-Entry creation stays independent of template creation.
+## Ignore similar messages
 
-Ignore similar rules use an exact app, one notification field, and literal text
-with `*` as the only wildcard. A review step reports the pending-match count.
-Rules can be disabled or deleted in Settings. Matching pending messages stay in
-Ignored under the normal raw retention policy; ledger entries and individually
-ignored messages retain their own state. Rule changes never dismiss Android
-notifications. An ignored message with retained content can still teach a template.
+Open a message, choose **More actions → Similar messages** (also available from
+the Ignore swipe menu). Enable **Summary notifications only** to match Android's
+group-summary flag, independent of title, body or changing message counts. This
+option starts on when opened from a summary notification. No text pattern is needed.
+Individual notifications are not matched by summary-only rules.
 
-Routine charging titles from Android/System UI and the explicitly identified
-launcher status title from Android are hidden by default. These narrow rules are
-visible and reversible. Disabled or deleted defaults are not recreated on reopen.
-Updated bank/payment notifications are not generically classified as status noise.
+**Same app only** starts on. Turn it off explicitly to apply the rule across apps.
+Review the pending match count before saving. Switch between summary-only and text
+matching without losing the unsaved text pattern. Text rules use a selected field
+and literal text with `*` for changing parts; the current field is copyable.
 
-## Suggested formats
+Disable or delete rules in Settings to restore pending matches while retained
+content remains available. Rules do not alter saved entries or dismiss Android
+notifications. Narrow system charging/launcher status rules remain reversible
+defaults. Rules are checked before automatic recording.
 
-Matching current notifications can offer optional suggestions for wallet payments,
-transit debits, incoming transfers, completed automatic payments, and specific card
-SMS layouts. Known format structure from the historical planning handoff is a
-candidate, not proof that every app/version/language is supported. Package scope,
-current-message preview and synthetic variations are required before enrollment.
-Redacted/grouped/truncated, approval, authentication and withdrawal alerts remain
-outside these suggestions. Templates never save a financial entry automatically.
+## Privacy and verification
 
-Amount, merchant, account hint and other changing text remain variable. Other
-changing text can cover dates or footers without claiming it is a transaction
-reference or parsing it as an event timestamp. Posting-time provenance remains
-explicit. Comma grouping is suggested from an entered amount; an explicit format
-selection takes precedence. A custom template can deliberately omit merchant;
-the resulting draft stays blank and shows a reminder to review it.
-
-No real samples are shipped as tests or defaults. Example fixtures are invented.
-The private review helper is opt-in instrumentation, keeps notification contents
-in memory and emits aggregate results only. Its enrollment mode additionally
-requires an explicit argument and sends only normal template/repreview commands.
-
-## Validation
-
-The debug APK and test APK build successfully. All 112 automated regression tests
-pass; lint reports 0 errors and 13 warnings. APK signature verification passes.
-Schema 3→4 adds revisioned ignore rules while preserving the ledger, receipts,
-settings and operation history. Migration and rule disable/delete/replay tests
-cover restoration and preservation. Native full notification lifecycle acceptance
-and local export remain separate pending work.
-
-Build: `artifacts/moneyfly-0.5.0-dev.apk` (version code 5).
-
-The owner-approved device update was installed without resetting the application.
-An authorized memory-only check enrolled matching structural templates and
-re-previewed pending receipts through the normal writer, then verified persisted
-previews after reopening. No financial-save commands were issued. Actual message
-contents and device screenshots were not saved in this project. This targeted
-check does not establish battery, reboot or every-provider notification acceptance.
+Only invented message fixtures are used in repository tests and emulator review.
+No personal notifications, exports, phone UI dumps or signing files are committed.
+Database upgrades preserve earlier text rules and app scope. Summary matching uses
+a separate persisted flag; existing rules keep their original text behavior.

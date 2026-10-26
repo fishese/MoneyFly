@@ -16,7 +16,7 @@
     <string name="record_choice_template">範本</string>
     <string name="ignore_similar">忽略類似訊息</string>
     <string name="ignore_similar_title">忽略類似訊息</string>
-    <string name="ignore_similar_explanation">為一個通知欄位建立規則。* 可配對變動文字。儲存前請檢查符合的保留項目數目。</string>
+    <string name="ignore_similar_explanation">可忽略摘要通知，或以 * 配對通知欄位中會變動的文字。儲存前請檢查保留訊息的符合項目。</string>
     <string name="ignore_rule_app">應用程式：%1$s</string>
     <string name="ignore_rule_name">規則名稱</string>
     <string name="ignore_rule_field">通知欄位</string>
@@ -40,4 +40,7 @@
     <string name="ignore_field_subtext">副文字</string>
     <string name="ignore_field_lines">文字行</string>
     <string name="ignored_by_similar_rule">已由類似訊息規則隱藏。可在設定停用規則以還原符合項目。</string>
+    <string name="ignore_summary_only">只忽略摘要通知</string>
+    <string name="ignore_summary_hint">忽略群組摘要通知，不論文字如何變更。個別通知仍會保留。</string>
+    <string name="ignore_summary_available">開啟即可忽略應用程式摘要，無需文字模式。</string>
 </resources>

@@ -37,6 +37,12 @@ val LEDGER_MIGRATION_4_5: Migration = object : Migration(4, 5) {
 }
 
 /** Idempotent for upgraded databases and for a v4 build opened before defaults were introduced. */
+val LEDGER_MIGRATION_5_6: Migration = object : Migration(5, 6) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE ignore_rule_revisions ADD COLUMN summaryOnly INTEGER NOT NULL DEFAULT 0")
+    }
+}
+
 internal fun seedDefaultStatusRules(db: SupportSQLiteDatabase) {
     db.execSQL("INSERT OR IGNORE INTO ignore_rule_revisions (id, revision, name, sourcePackage, field, pattern, ignoreCase, enabled, deleted) SELECT 'default-status:' || sourcePackage || ':charging-full', 1, 'Charging status', sourcePackage, 'TITLE', 'Charging*', 1, 1, 0 FROM capture_sources WHERE sourcePackage IN ('android', 'com.android.systemui')")
     db.execSQL("INSERT OR IGNORE INTO ignore_rule_revisions (id, revision, name, sourcePackage, field, pattern, ignoreCase, enabled, deleted) SELECT 'default-status:android:zone-launcher', 1, 'Zone Launcher status', sourcePackage, 'TITLE', 'Zone Launcher *', 1, 1, 0 FROM capture_sources WHERE sourcePackage = 'android'")

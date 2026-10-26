@@ -3,7 +3,7 @@ package com.fishese.moneyfly.recognition
 import com.fishese.moneyfly.capture.NotificationPayload
 import java.util.Locale
 
-/** An app-scoped, field-local rule. `*` is the only metacharacter. */
+/** A scoped text pattern or Android group-summary rule. `*` is the only text metacharacter. */
 data class IgnoreRule(
     val id: String,
     val name: String,
@@ -14,6 +14,7 @@ data class IgnoreRule(
     val enabled: Boolean = true,
     val revision: Long = 0,
     val sameAppOnly: Boolean = true,
+    val summaryOnly: Boolean = false,
 )
 
 /** Conservative built-ins for non-financial system status sources only. */
@@ -57,8 +58,11 @@ object IgnoreRuleMatcher {
         if (rule.id.isBlank() || rule.id.length > 200) add("A valid ignore rule ID is required.")
         if (rule.name.isBlank() || rule.name.length > 120) add("Enter an ignore rule name of 1–120 characters.")
         if (rule.sourcePackage.isBlank() || rule.sourcePackage.length > 300) add("Choose a source app.")
-        if (rule.pattern.isEmpty() || rule.pattern.length > MAX_PATTERN) add("Enter a pattern of 1–4096 characters.")
-        if (rule.pattern.all { it == '*' }) add("The pattern must contain some literal text.")
+        if (rule.pattern.length > MAX_PATTERN) add("The pattern cannot exceed 4096 characters.")
+        if (!rule.summaryOnly) {
+            if (rule.pattern.isEmpty()) add("Enter a pattern of 1–4096 characters.")
+            if (rule.pattern.all { it == '*' }) add("The pattern must contain some literal text.")
+        }
     }.distinct()
 
     fun matches(payload: NotificationPayload, rule: IgnoreRule): Boolean {
@@ -77,7 +81,8 @@ object IgnoreRuleMatcher {
     fun matchingRule(payload: NotificationPayload, rules: List<Compiled>): IgnoreRule? {
         val fields = mutableMapOf<Pair<MessageField, Boolean>, String?>()
         return rules.firstOrNull { compiled ->
-            if (compiled.rule.sameAppOnly && payload.sourcePackage != compiled.rule.sourcePackage) false else {
+            if (compiled.rule.sameAppOnly && payload.sourcePackage != compiled.rule.sourcePackage) false
+            else if (compiled.rule.summaryOnly) payload.groupSummary else {
                 val key = compiled.rule.field to compiled.rule.ignoreCase
                 if (key !in fields) fields[key] = boundedField(payload, compiled.rule.field)?.let { normalize(it, compiled.rule.ignoreCase) }
                 val value = fields[key]

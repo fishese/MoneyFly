@@ -15,6 +15,8 @@ import java.time.LocalDate
 import java.time.ZoneId
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
+import org.junit.Assert.*
+import kotlinx.coroutines.flow.first
 import org.junit.runner.RunWith
 
 /** Run ONLY on the isolated moneyfly-ui-review AVD. All contents are invented. */
@@ -51,12 +53,21 @@ class UiReviewTest {
                     entryId = "ui-${row.id}", operationId = "ui-save-${row.id}"))
             }
             store.execute(LedgerCommand.SetCaptureConsent(true, 0, "ui-consent-enable"))
+            val oldId = store.execute(LedgerCommand.CaptureNotification(NotificationPayload("example.synthetic.receipts", "synthetic", "ui-old", posted.minusSeconds(120), posted.minusSeconds(120),
+                title = "SAMPLE earlier purchase", body = "Paid HKD 43.70 at SAMPLE CORNER SHOP."), "ui-old-capture")).entityId
             val template = TemplateDefinition("ui-format", "Invented purchase layout", "example.synthetic.receipts",
                 listOf(FieldPattern(MessageField.BODY, listOf(PatternSegment.Literal("Paid HKD "), PatternSegment.Slot(SlotName.AMOUNT, 32), PatternSegment.Literal(" at "), PatternSegment.Slot(SlotName.MERCHANT, 256), PatternSegment.Literal(".")))),
                 fixedCurrency = "HKD", fixedCurrencyEvidence = FixedCurrencyEvidence.EXPLICIT_MATCHED_LITERAL, enabled = true)
             store.execute(LedgerCommand.PutTemplate(template, operationId = "ui-template"))
-            store.execute(LedgerCommand.CaptureNotification(NotificationPayload("example.synthetic.receipts", "synthetic", "ui-ready", posted, posted,
-                title = "SAMPLE purchase", body = "Paid HKD 25.40 at SAMPLE BAKERY."), "ui-ready-capture"))
+            assertEquals(com.fishese.moneyfly.capture.InboxStatus.SAVED, store.inbox.first().single { it.id == oldId }.status)
+            val automatic = LedgerCommand.CaptureNotification(NotificationPayload("example.synthetic.receipts", "synthetic", "ui-ready", posted, posted,
+                title = "SAMPLE purchase", body = "Paid HKD 25.40 at SAMPLE BAKERY."), "ui-ready-capture")
+            val receiptId = store.execute(automatic).entityId
+            assertTrue(store.execute(automatic).replayed)
+            assertEquals(com.fishese.moneyfly.capture.InboxStatus.SAVED, store.inbox.first().single { it.id == receiptId }.status)
+            assertEquals(1, store.entries.first().count { it.draft.merchant == "SAMPLE BAKERY" })
+            store.execute(LedgerCommand.CaptureNotification(NotificationPayload("example.synthetic.chat", "synthetic", "ui-summary", posted, posted,
+                title = "SAMPLE Chat", body = "6 messages from 3 chats", groupSummary = true), "ui-summary-capture"))
             store.execute(LedgerCommand.CaptureNotification(NotificationPayload("example.synthetic.receipts", "synthetic", "ui-unknown", posted.minusSeconds(60), posted.minusSeconds(60),
                 title = "SAMPLE receipt details", body = "An invented unsupported notification. Record it manually if it is an expense."), "ui-unknown-capture"))
             store.execute(LedgerCommand.SetCaptureConsent(false, 1, "ui-consent-pause"))

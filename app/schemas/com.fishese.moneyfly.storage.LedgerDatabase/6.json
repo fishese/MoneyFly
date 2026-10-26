@@ -1,0 +1,815 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 6,
+    "identityHash": "cdc7a4e259f45d788179dba36b7be43d",
+    "entities": [
+      {
+        "tableName": "ledger_entries",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `revision` INTEGER NOT NULL, `amount` TEXT NOT NULL, `currency` TEXT NOT NULL, `kind` TEXT NOT NULL, `occurredAt` TEXT NOT NULL, `merchant` TEXT NOT NULL, `notes` TEXT NOT NULL, `categoryId` TEXT, `accountId` TEXT, `canonicalMerchant` TEXT, `sourcePackage` TEXT, `timeOrigin` TEXT NOT NULL, `timePrecision` TEXT NOT NULL, `categoryOrigin` TEXT NOT NULL, `deleted` INTEGER NOT NULL, `createdAt` TEXT NOT NULL, `updatedAt` TEXT NOT NULL, `lastOperationId` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "revision",
+            "columnName": "revision",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "amount",
+            "columnName": "amount",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "currency",
+            "columnName": "currency",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "occurredAt",
+            "columnName": "occurredAt",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "merchant",
+            "columnName": "merchant",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "notes",
+            "columnName": "notes",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "categoryId",
+            "columnName": "categoryId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "accountId",
+            "columnName": "accountId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "canonicalMerchant",
+            "columnName": "canonicalMerchant",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "sourcePackage",
+            "columnName": "sourcePackage",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "timeOrigin",
+            "columnName": "timeOrigin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timePrecision",
+            "columnName": "timePrecision",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "categoryOrigin",
+            "columnName": "categoryOrigin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deleted",
+            "columnName": "deleted",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastOperationId",
+            "columnName": "lastOperationId",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_ledger_entries_categoryId",
+            "unique": false,
+            "columnNames": [
+              "categoryId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_ledger_entries_categoryId` ON `${TABLE_NAME}` (`categoryId`)"
+          },
+          {
+            "name": "index_ledger_entries_accountId",
+            "unique": false,
+            "columnNames": [
+              "accountId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_ledger_entries_accountId` ON `${TABLE_NAME}` (`accountId`)"
+          }
+        ]
+      },
+      {
+        "tableName": "categories",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `revision` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "revision",
+            "columnName": "revision",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "account_labels",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `kind` TEXT NOT NULL, `revision` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "revision",
+            "columnName": "revision",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "merchant_aliases",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `spelling` TEXT NOT NULL, `normalized` TEXT NOT NULL, `canonicalName` TEXT NOT NULL, `revision` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "spelling",
+            "columnName": "spelling",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "normalized",
+            "columnName": "normalized",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "canonicalName",
+            "columnName": "canonicalName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "revision",
+            "columnName": "revision",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_merchant_aliases_normalized",
+            "unique": true,
+            "columnNames": [
+              "normalized"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_merchant_aliases_normalized` ON `${TABLE_NAME}` (`normalized`)"
+          }
+        ]
+      },
+      {
+        "tableName": "category_rules",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `field` TEXT NOT NULL, `match` TEXT NOT NULL, `literal` TEXT NOT NULL, `categoryId` TEXT NOT NULL, `priority` INTEGER NOT NULL, `sourcePackage` TEXT, `accountId` TEXT, `revision` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "field",
+            "columnName": "field",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "match",
+            "columnName": "match",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "literal",
+            "columnName": "literal",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "categoryId",
+            "columnName": "categoryId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "priority",
+            "columnName": "priority",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourcePackage",
+            "columnName": "sourcePackage",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "accountId",
+            "columnName": "accountId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "revision",
+            "columnName": "revision",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "operation_results",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `fingerprint` TEXT NOT NULL, `result` TEXT NOT NULL, `previousEntry` TEXT, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fingerprint",
+            "columnName": "fingerprint",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "result",
+            "columnName": "result",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "previousEntry",
+            "columnName": "previousEntry",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "retired_entities",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`kind` TEXT NOT NULL, `id` TEXT NOT NULL, PRIMARY KEY(`kind`, `id`))",
+        "fields": [
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "kind",
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "notification_slots",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`slotKey` TEXT NOT NULL, `episodeId` TEXT NOT NULL, `active` INTEGER NOT NULL, PRIMARY KEY(`slotKey`))",
+        "fields": [
+          {
+            "fieldPath": "slotKey",
+            "columnName": "slotKey",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "episodeId",
+            "columnName": "episodeId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "active",
+            "columnName": "active",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "slotKey"
+          ]
+        }
+      },
+      {
+        "tableName": "inbox_receipts",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `episodeId` TEXT NOT NULL, `fingerprint` TEXT NOT NULL, `sourcePackage` TEXT NOT NULL, `postedAt` TEXT NOT NULL, `observedAt` TEXT NOT NULL, `contentRevision` INTEGER NOT NULL, `revision` INTEGER NOT NULL, `settlement` TEXT, `entryId` TEXT, `removed` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "episodeId",
+            "columnName": "episodeId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fingerprint",
+            "columnName": "fingerprint",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourcePackage",
+            "columnName": "sourcePackage",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "postedAt",
+            "columnName": "postedAt",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "observedAt",
+            "columnName": "observedAt",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "contentRevision",
+            "columnName": "contentRevision",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "revision",
+            "columnName": "revision",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "settlement",
+            "columnName": "settlement",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "entryId",
+            "columnName": "entryId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "removed",
+            "columnName": "removed",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_inbox_receipts_episodeId_fingerprint",
+            "unique": true,
+            "columnNames": [
+              "episodeId",
+              "fingerprint"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_inbox_receipts_episodeId_fingerprint` ON `${TABLE_NAME}` (`episodeId`, `fingerprint`)"
+          },
+          {
+            "name": "index_inbox_receipts_entryId",
+            "unique": false,
+            "columnNames": [
+              "entryId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_inbox_receipts_entryId` ON `${TABLE_NAME}` (`entryId`)"
+          }
+        ]
+      },
+      {
+        "tableName": "inbox_raw",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`receiptId` TEXT NOT NULL, `payload` TEXT NOT NULL, `capturedAt` INTEGER NOT NULL, `byteCount` INTEGER NOT NULL, PRIMARY KEY(`receiptId`))",
+        "fields": [
+          {
+            "fieldPath": "receiptId",
+            "columnName": "receiptId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "payload",
+            "columnName": "payload",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "capturedAt",
+            "columnName": "capturedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "byteCount",
+            "columnName": "byteCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "receiptId"
+          ]
+        }
+      },
+      {
+        "tableName": "capture_sources",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`sourcePackage` TEXT NOT NULL, `ignored` INTEGER NOT NULL, `parsingEnabled` INTEGER NOT NULL, `revision` INTEGER NOT NULL, PRIMARY KEY(`sourcePackage`))",
+        "fields": [
+          {
+            "fieldPath": "sourcePackage",
+            "columnName": "sourcePackage",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ignored",
+            "columnName": "ignored",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "parsingEnabled",
+            "columnName": "parsingEnabled",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "revision",
+            "columnName": "revision",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "sourcePackage"
+          ]
+        }
+      },
+      {
+        "tableName": "capture_settings",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `consent` INTEGER NOT NULL, `revision` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "consent",
+            "columnName": "consent",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "revision",
+            "columnName": "revision",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "expired_active_revisions",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`episodeId` TEXT NOT NULL, `fingerprint` TEXT NOT NULL, `contentRevision` INTEGER NOT NULL, PRIMARY KEY(`episodeId`, `fingerprint`))",
+        "fields": [
+          {
+            "fieldPath": "episodeId",
+            "columnName": "episodeId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fingerprint",
+            "columnName": "fingerprint",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "contentRevision",
+            "columnName": "contentRevision",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "episodeId",
+            "fingerprint"
+          ]
+        }
+      },
+      {
+        "tableName": "template_revisions",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `revision` INTEGER NOT NULL, `definition` TEXT NOT NULL, `enabled` INTEGER NOT NULL, `deleted` INTEGER NOT NULL, PRIMARY KEY(`id`, `revision`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "revision",
+            "columnName": "revision",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "definition",
+            "columnName": "definition",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "enabled",
+            "columnName": "enabled",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deleted",
+            "columnName": "deleted",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id",
+            "revision"
+          ]
+        }
+      },
+      {
+        "tableName": "receipt_recognition",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`receiptId` TEXT NOT NULL, `result` TEXT, `templateId` TEXT, `templateRevision` INTEGER, PRIMARY KEY(`receiptId`))",
+        "fields": [
+          {
+            "fieldPath": "receiptId",
+            "columnName": "receiptId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "result",
+            "columnName": "result",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "templateId",
+            "columnName": "templateId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "templateRevision",
+            "columnName": "templateRevision",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "receiptId"
+          ]
+        }
+      },
+      {
+        "tableName": "ignore_rule_revisions",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `revision` INTEGER NOT NULL, `name` TEXT NOT NULL, `sourcePackage` TEXT NOT NULL, `field` TEXT NOT NULL, `pattern` TEXT NOT NULL, `ignoreCase` INTEGER NOT NULL, `enabled` INTEGER NOT NULL, `deleted` INTEGER NOT NULL, `sameAppOnly` INTEGER NOT NULL DEFAULT 1, `summaryOnly` INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(`id`, `revision`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "revision",
+            "columnName": "revision",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourcePackage",
+            "columnName": "sourcePackage",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "field",
+            "columnName": "field",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pattern",
+            "columnName": "pattern",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ignoreCase",
+            "columnName": "ignoreCase",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "enabled",
+            "columnName": "enabled",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deleted",
+            "columnName": "deleted",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sameAppOnly",
+            "columnName": "sameAppOnly",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "1"
+          },
+          {
+            "fieldPath": "summaryOnly",
+            "columnName": "summaryOnly",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id",
+            "revision"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'cdc7a4e259f45d788179dba36b7be43d')"
+    ]
+  }
+}

@@ -37,7 +37,7 @@ class InboxStoreTest {
         "Synthetic title", "Invented notification content", bigText = "Invented expanded content", textLines = listOf("Invented line"))
     @Before fun open() { context = ApplicationProvider.getApplicationContext(); context.deleteDatabase(name); reopen() }
     private fun reopen(retention: RawRetention = RawRetention()) {
-        db = Room.databaseBuilder(context, LedgerDatabase::class.java, name).addMigrations(LEDGER_MIGRATION_1_2, LEDGER_MIGRATION_2_3, LEDGER_MIGRATION_3_4, LEDGER_MIGRATION_4_5).build()
+        db = Room.databaseBuilder(context, LedgerDatabase::class.java, name).addMigrations(LEDGER_MIGRATION_1_2, LEDGER_MIGRATION_2_3, LEDGER_MIGRATION_3_4, LEDGER_MIGRATION_4_5, LEDGER_MIGRATION_5_6).build()
         store = RoomLedgerStore(db, digest, { now }, retention)
     }
     @After fun close() { db.close(); context.deleteDatabase(name) }

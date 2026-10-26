@@ -14,6 +14,7 @@ data class IgnoreRuleRow(
     val id: String, val revision: Long, val name: String, val sourcePackage: String,
     val field: String, val pattern: String, val ignoreCase: Boolean, val enabled: Boolean, val deleted: Boolean,
     @ColumnInfo(defaultValue = "1") val sameAppOnly: Boolean,
+    @ColumnInfo(defaultValue = "0") val summaryOnly: Boolean,
 )
 
 @Dao
@@ -27,10 +28,11 @@ interface IgnoreRuleDao {
     @Insert suspend fun put(row: IgnoreRuleRow)
 }
 
-internal fun IgnoreRuleRow.toRule() = IgnoreRule(id, name, sourcePackage, MessageField.valueOf(field), pattern, ignoreCase, enabled, revision, sameAppOnly)
-internal fun IgnoreRule.toRow(revision: Long, deleted: Boolean = false) = IgnoreRuleRow(id, revision, name, sourcePackage, field.name, pattern, ignoreCase, enabled, deleted, sameAppOnly)
+internal fun IgnoreRuleRow.toRule() = IgnoreRule(id, name, sourcePackage, MessageField.valueOf(field), pattern, ignoreCase, enabled, revision, sameAppOnly, summaryOnly)
+internal fun IgnoreRule.toRow(revision: Long, deleted: Boolean = false) = IgnoreRuleRow(id, revision, name, sourcePackage, field.name, pattern, ignoreCase, enabled, deleted, sameAppOnly, summaryOnly)
 
 internal class IgnoreRuleWriter(private val dao: IgnoreRuleDao) {
+    suspend fun currentCompiled() = dao.current().mapNotNull { IgnoreRuleMatcher.compile(it.toRule()) }
     /** A tombstone or disabled revision counts as enrolled and is never resurrected. */
     suspend fun ensureDefaults(sourcePackage: String) {
         for (rule in DefaultStatusRules.forSource(sourcePackage)) {

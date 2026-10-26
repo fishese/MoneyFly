@@ -72,7 +72,7 @@
     <string name="ready_empty">No Ready drafts match. You can record any unrecognized notification manually or teach a template.</string>
     <string name="create_template">Create template</string>
     <string name="save_template">Save template</string>
-    <string name="save_template_enrollment">Saving enables this template and parsing for %1$s.</string>
+    <string name="save_template_enrollment">Saving enables this template for %1$s and records clear matches in retained and future notifications.</string>
     <string name="template_literal_restriction">%1$s must match the restriction: %2$s</string>
     <string name="builder_explanation">Teach this app\'s format using text in this notification. Choose the fields below and preview changing purchases. A template is optional for recording an entry.</string>
     <string name="template_name">Template name</string>
@@ -106,7 +106,7 @@
     <string name="synthetic_negative">Generated nonmatching example %1$d</string>
     <string name="extracted_preview">Extracted fields</string>
     <string name="preview_no_match">No match</string>
-    <string name="enable_template_effect">Save template enables it and allows parsing for this source. Existing saved entries stay unchanged. Repreview a pending Inbox item explicitly to apply the new template.</string>
+    <string name="enable_template_effect">Saving enables this template and parsing for this app. Clear matches in retained pending messages and future notifications are recorded automatically. Changed messages, ambiguous matches and possible duplicates stay in Inbox for review. Existing entries stay unchanged.</string>
     <string name="message_field">Notification field</string>
     <string name="notification_title">Title</string>
     <string name="notification_body">Body</string>
@@ -118,7 +118,7 @@
     <string name="template_save_failed">Could not save the template. It may have changed; check Settings before retrying.</string>
     <string name="template_retry_save">Save was interrupted. Tap Save template to retry the same change, or cancel and check Settings before starting another template.</string>
     <string name="templates">Templates</string>
-    <string name="template_settings_hint">Templates prepare drafts only. Disabling or deleting a template leaves saved entries unchanged.</string>
+    <string name="template_settings_hint">Enabled templates automatically record new clear matches. Disable a template to pause future automatic recording. Saved entries stay unchanged.</string>
     <string name="no_templates">Create a template from a retained notification in the Inbox.</string>
     <string name="template_enabled">Enabled</string>
     <string name="delete_template">Delete this template?</string>

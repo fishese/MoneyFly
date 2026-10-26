@@ -44,13 +44,11 @@ internal fun TemplateStart(
     val selected = suggestions.firstOrNull { it.format.id == selectedId } ?: suggestions.first()
     val templateId = rememberSaveable(receipt.id, selected.format.id) { UUID.randomUUID().toString() }
     val putOperationId = rememberSaveable(receipt.id, selected.format.id) { UUID.randomUUID().toString() }
-    val previewOperationId = rememberSaveable(receipt.id, receipt.revision, selected.format.id) { UUID.randomUUID().toString() }
     val frozen = remember(selected.definition, templateId) { selected.definition.copy(id = templateId, enabled = true) }
     var busy by rememberSaveable(receipt.id) { mutableStateOf(false) }
     var error by rememberSaveable(receipt.id) { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val saveFailed = stringResource(R.string.suggested_template_save_failed)
-    val pending = receipt.status in setOf(InboxStatus.READY, InboxStatus.UNRECOGNIZED, InboxStatus.REVIEW_NEEDED)
 
     Dialog(onDismissRequest = { if (!busy) close() }, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         DialogSystemBars()
@@ -96,13 +94,7 @@ internal fun TemplateStart(
                                 try {
                                     val saved = store.execute(put)
                                     if (!saved.applied) error = saved.message ?: saveFailed
-                                    else if (pending) {
-                                        // The template is already safely committed. Refresh is best effort: a
-                                        // concurrent receipt revision can be reviewed from Inbox without
-                                        // presenting the successful template save as a failure.
-                                        try { store.execute(LedgerCommand.RepreviewReceipt(receipt.id, receipt.revision, previewOperationId)) } catch (_: Exception) {}
-                                        close()
-                                    } else close()
+                                    else close()
                                 } catch (_: Exception) { error = saveFailed }
                                 finally { busy = false }
                             }

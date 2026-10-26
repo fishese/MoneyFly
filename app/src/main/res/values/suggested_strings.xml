@@ -6,7 +6,7 @@
     <string name="suggested_template_title">Create a template</string>
     <string name="suggested_template_match_explanation">A known format matches this message. Review the result before using it for future notifications.</string>
     <string name="suggested_template_scope">Only notifications from %1$s</string>
-    <string name="suggested_template_review_only">Creating this template does not record an entry. Future matches still appear in the Inbox for review.</string>
+    <string name="suggested_template_review_only">Saving applies this template to retained pending messages and future notifications. Clear matches are recorded automatically; possible duplicates and unclear messages stay in Inbox.</string>
     <string name="suggested_template_use">Use suggested template</string>
     <string name="suggested_template_custom">Build a custom template</string>
     <string name="suggested_template_save_failed">The template or refreshed preview could not be saved. Review the current item and try again.</string>

@@ -57,11 +57,11 @@ internal class TemplateWriter(private val dao: TemplateDao, private val inbox: I
         }
         return ok(definition.id, definition.revision)
     }
-    suspend fun freeze(row: ReceiptRow, payload: NotificationPayload) {
+    suspend fun freeze(row: ReceiptRow, payload: NotificationPayload): RecognitionResult {
         val result = if (inbox.source(row.sourcePackage)?.parsingEnabled == true)
             TemplateEngine.recognize(payload, dao.current().map { TemplateCodec.decode(it.definition) }) else RecognitionResult(RecognitionStatus.NO_MATCH)
         val json = TemplateCodec.recognition(result)
-        val raw = inbox.rawOnce(row.id) ?: return
+        val raw = inbox.rawOnce(row.id) ?: return result
         val rawBytes = raw.payload.toByteArray(Charsets.UTF_8).size.toLong()
         if (result.status == RecognitionStatus.NO_MATCH) {
             dao.clearRecognition(row.id); inbox.updateRawBytes(row.id, rawBytes)
@@ -69,6 +69,12 @@ internal class TemplateWriter(private val dao: TemplateDao, private val inbox: I
             dao.putRecognition(RecognitionRow(row.id, json, result.templateId, result.templateRevision))
             inbox.updateRawBytes(row.id, rawBytes + json.toByteArray(Charsets.UTF_8).size)
         }
+        return result
+    }
+    suspend fun requireReview(row: ReceiptRow, result: RecognitionResult, issue: String) {
+        val json = TemplateCodec.recognition(result.copy(status = RecognitionStatus.REVIEW_NEEDED, issues = result.issues + issue))
+        dao.putRecognition(RecognitionRow(row.id, json, result.templateId, result.templateRevision))
+        inbox.rawOnce(row.id)?.let { inbox.updateRawBytes(row.id, it.payload.toByteArray(Charsets.UTF_8).size.toLong() + json.toByteArray(Charsets.UTF_8).size) }
     }
     suspend fun clear(id: String) {
         val row = dao.recognitionOnce(id)

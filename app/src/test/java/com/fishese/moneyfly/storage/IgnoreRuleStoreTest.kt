@@ -79,6 +79,23 @@ class IgnoreRuleStoreTest {
         assertTrue(store.ignoreRules.first().isEmpty())
     }
 
+    @Test fun summaryRuleUsesFlagAndScopeAndCanRestorePendingItems() = runBlocking {
+        store.execute(LedgerCommand.SetCaptureConsent(true, 0))
+        val summary = store.execute(LedgerCommand.CaptureNotification(payload("summary", title = "Invented grouped messages").copy(groupSummary = true))).entityId
+        val individual = capture("individual", title = "Invented grouped messages")
+        val other = store.execute(LedgerCommand.CaptureNotification(payload("other-summary", "other.app").copy(groupSummary = true))).entityId
+        val rule = IgnoreRule("summaries", "Synthetic summaries", "synthetic.app", MessageField.TITLE, "", summaryOnly = true)
+        assertTrue(store.execute(LedgerCommand.PutIgnoreRule(rule)).applied)
+        assertTrue(store.ignoreRules.first().single().summaryOnly)
+        assertEquals(InboxStatus.IGNORED, store.inbox.first().single { it.id == summary }.status)
+        assertEquals(InboxStatus.UNRECOGNIZED, store.inbox.first().single { it.id == individual.id }.status)
+        assertEquals(InboxStatus.UNRECOGNIZED, store.inbox.first().single { it.id == other }.status)
+        assertTrue(store.execute(LedgerCommand.PutIgnoreRule(rule.copy(sameAppOnly = false), 1)).applied)
+        assertEquals(InboxStatus.IGNORED, store.inbox.first().single { it.id == other }.status)
+        store.execute(LedgerCommand.SetIgnoreRuleEnabled(rule.id, 2, false))
+        assertEquals(InboxStatus.UNRECOGNIZED, store.inbox.first().single { it.id == summary }.status)
+    }
+
     @Test fun sameAppIsDefaultAndCrossAppIsExplicitAndPersisted() = runBlocking {
         store.execute(LedgerCommand.SetCaptureConsent(true, 0))
         val other = capture("cross-app", source = "other.app")

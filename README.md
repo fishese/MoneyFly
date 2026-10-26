@@ -32,15 +32,16 @@ Swipe left for Ignore: This item / Similar messages / This app. Swipe right for
 Record: Entry / Template. Swipes reveal choices; they do not immediately change a
 record. Ignore actions never dismiss the original Android notification.
 
-Similar-message rules use literal text with `*` for changing parts. Same app only
+Similar-message rules can ignore Android summary notifications without a text pattern, or use literal text with `*` for changing parts. Same app only
 is on by default; switching it off explicitly applies a rule across apps. Review
 matches before saving. Disable rules in Settings to restore pending matches.
 Narrow system charging/launcher status rules are reversible defaults.
 
 Templates extract changing amounts, merchants and optional fields. Matching
 suggestions are optional and must pass current-message and synthetic variation
-checks. Ambiguous, grouped or incomplete notifications require review. Creating a
-template never books an expense. Event-time interpretation and account assignment
+checks. New clear matches record automatically. Changed notifications, possible duplicates,
+ambiguous, grouped or incomplete notifications require review. Saving an enabled
+template also applies it to retained pending messages. Event-time interpretation and account assignment
 remain explicit; posting time is labeled when used as a fallback.
 
 ## Build

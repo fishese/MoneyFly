@@ -103,6 +103,27 @@ class NotificationInboxTest {
         }
     }
 
+    @Test fun summaryIgnoreIsAvailableWithoutPatternAndDefaultsToSameApp() {
+        val store = FakeInboxStore()
+        store.inbox.value = store.inbox.value.map { it.copy(payload = it.payload!!.copy(groupSummary = true)) }
+        compose.setContent { MoneyFlyApp(store, FakeController()) }
+        compose.onNodeWithTag("destination_1", useUnmergedTree = true).performClick()
+        openReceiptActions()
+        compose.onNodeWithTag("inbox_list").performScrollToNode(hasTestTag("similar_receipt"))
+        compose.onNodeWithTag("similar_receipt", useUnmergedTree = true).performClick()
+        compose.onNodeWithTag("ignore_rule_summary_only", useUnmergedTree = true).assertIsOn()
+        compose.onNodeWithTag("ignore_rule_same_app", useUnmergedTree = true).assertIsOn()
+        compose.onNodeWithTag("ignore_rule_pattern", useUnmergedTree = true).assertDoesNotExist()
+        compose.onNodeWithTag("save_ignore_rule", useUnmergedTree = true).assertIsNotEnabled()
+        compose.onNodeWithTag("preview_ignore_rule", useUnmergedTree = true).performScrollTo().performClick()
+        compose.onNodeWithTag("save_ignore_rule", useUnmergedTree = true).performClick()
+        compose.waitUntil { store.commands.any { it is LedgerCommand.PutIgnoreRule } }
+        compose.runOnIdle {
+            val rule = store.commands.filterIsInstance<LedgerCommand.PutIgnoreRule>().single().rule
+            assertTrue(rule.summaryOnly); assertTrue(rule.sameAppOnly); assertEquals("", rule.pattern)
+        }
+    }
+
     @Test fun similarRulePrefillsExactTitleAndRequiresReviewBeforeSavingEditedPattern() {
         val store = FakeInboxStore()
         compose.setContent { MoneyFlyApp(store, FakeController()) }

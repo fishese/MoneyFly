@@ -16,7 +16,7 @@
     <string name="record_choice_template">Template</string>
     <string name="ignore_similar">Ignore similar messages</string>
     <string name="ignore_similar_title">Ignore similar messages</string>
-    <string name="ignore_similar_explanation">Create a rule for one notification field. * matches changing text. Review how many retained items match before saving.</string>
+    <string name="ignore_similar_explanation">Ignore summary notifications, or match one notification field using * for changing text. Review retained matches before saving.</string>
     <string name="ignore_rule_app">App: %1$s</string>
     <string name="ignore_rule_name">Rule name</string>
     <string name="ignore_rule_field">Notification field</string>
@@ -25,7 +25,7 @@
     <string name="ignore_rule_ignore_case">Ignore upper/lower case</string>
     <string name="preview_ignore_rule">Review matches</string>
     <plurals name="ignore_rule_match_count"><item quantity="one">Matches %1$d retained item</item><item quantity="other">Matches %1$d retained items</item></plurals>
-    <string name="ignore_rule_privacy">Only the app, field and pattern you approve are saved as a rule.</string>
+    <string name="ignore_rule_privacy">Only the app scope and matching criteria you approve are saved as a rule.</string>
     <string name="save_rule">Save rule</string>
     <string name="retry_save_rule">Retry same rule</string>
     <string name="ignore_rule_save_failed">Unable to save this rule.</string>
@@ -40,4 +40,7 @@
     <string name="ignore_field_subtext">Subtext</string>
     <string name="ignore_field_lines">Text lines</string>
     <string name="ignored_by_similar_rule">Hidden by a similar-message rule. Disable the rule in Settings to restore matching items.</string>
+    <string name="ignore_summary_only">Summary notifications only</string>
+    <string name="ignore_summary_hint">Ignore grouped summary notifications, regardless of their text. Individual notifications remain available.</string>
+    <string name="ignore_summary_available">Turn this on to ignore app summaries without a text pattern.</string>
 </resources>

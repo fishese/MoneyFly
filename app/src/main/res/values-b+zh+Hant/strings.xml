@@ -72,7 +72,7 @@
     <string name="ready_empty">沒有符合條件的待儲存草稿。你可手動記錄未辨識通知，或建立範本。</string>
     <string name="create_template">建立範本</string>
     <string name="save_template">儲存範本</string>
-    <string name="save_template_enrollment">儲存後會啟用此範本及 %1$s 的解析。</string>
+    <string name="save_template_enrollment">儲存會啟用 %1$s 的範本，並記錄保留訊息及以後通知中的明確符合項目。</string>
     <string name="template_literal_restriction">%1$s 必須符合限制：%2$s</string>
     <string name="builder_explanation">使用此通知的文字教導應用程式辨識格式。選擇以下欄位並預覽不同交易。記帳不需要建立範本。</string>
     <string name="template_name">範本名稱</string>
@@ -106,7 +106,7 @@
     <string name="synthetic_negative">產生的不相符例子 %1$d</string>
     <string name="extracted_preview">擷取欄位</string>
     <string name="preview_no_match">不相符</string>
-    <string name="enable_template_effect">儲存後會啟用範本並允許解析此來源。現有記錄不會變更。你可明確重新預覽一個待處理收件匣項目，以套用新範本。</string>
+    <string name="enable_template_effect">儲存會啟用範本及此來源的解析。保留的待處理訊息及以後通知中，明確符合的項目會自動記帳。已變更、含糊或可能重複的訊息會留在收件匣供檢查。現有記錄保持不變。</string>
     <string name="message_field">通知欄位</string>
     <string name="notification_title">標題</string>
     <string name="notification_body">內文</string>
@@ -118,7 +118,7 @@
     <string name="template_save_failed">無法儲存範本。範本可能已變更，重試前請先檢查設定。</string>
     <string name="template_retry_save">儲存中斷。請按儲存範本重試相同變更，或取消並先檢查設定，再建立另一個範本。</string>
     <string name="templates">範本</string>
-    <string name="template_settings_hint">範本只會準備草稿。停用或刪除範本不會變更已儲存的記錄。</string>
+    <string name="template_settings_hint">啟用的範本會自動記錄新的明確符合項目。停用範本可暫停以後的自動記帳。已儲存記錄保持不變。</string>
     <string name="no_templates">請從收件匣保留的通知建立範本。</string>
     <string name="template_enabled">已啟用</string>
     <string name="delete_template">刪除此範本？</string>

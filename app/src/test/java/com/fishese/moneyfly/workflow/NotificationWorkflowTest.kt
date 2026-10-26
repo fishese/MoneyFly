@@ -61,16 +61,17 @@ class NotificationWorkflowTest {
             assertTrue(store.execute(LedgerCommand.PutTemplate(template)).applied)
             // Teaching is independent: it does not change or add a booked amount.
             assertEquals(1, store.entries.first().size)
-            store.execute(LedgerCommand.CaptureNotification(payload("second", "137.20", "SAMPLE MARKET")))
-            val ready = store.inbox.first().single { it.status == InboxStatus.READY }
+            val capture = LedgerCommand.CaptureNotification(payload("second", "137.20", "SAMPLE MARKET"), "synthetic-auto-capture")
+            val receiptId = store.execute(capture).entityId
+            val ready = store.inbox.first().single { it.id == receiptId }
+            assertEquals(InboxStatus.SAVED, ready.status)
             assertEquals("137.20", ready.draft!!.amount)
             assertEquals("SAMPLE MARKET", ready.draft!!.merchant)
             assertNull(ready.draft!!.accountId)
             assertEquals(TimeOrigin.NOTIFICATION_POSTED, ready.draft!!.timeOrigin)
             assertEquals(TimePrecision.UNKNOWN, ready.draft!!.timePrecision)
-            val save = LedgerCommand.SaveCaptured(ready.id, ready.revision, ready.draft!!, operationId = "synthetic-save-ready")
-            assertTrue(store.execute(save).applied)
-            assertTrue(store.execute(save).replayed)
+            assertTrue(store.execute(capture).replayed)
+            assertEquals(CommandStatus.CONFLICT, store.execute(LedgerCommand.SaveCaptured(ready.id, ready.revision, ready.draft!!)).status)
             assertEquals(2, store.entries.first().size)
             val filtered = store.entries.first().filter(LedgerFilter(keyword = "market", unassignedOnly = true)::matches)
             assertEquals(1, filtered.size)

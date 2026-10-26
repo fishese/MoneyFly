@@ -32,20 +32,17 @@ class SuggestedTemplateStartTest {
         compose.setContent { MaterialTheme { if (!closed.value) TemplateStart(item, store, { closed.value = true }, recordEntry = {}) } }
     }
 
-    @Test fun explicitUseCreatesEnabledTemplateThenRepreviewsWithoutBookingMoney() {
+    @Test fun explicitUseCreatesOneAtomicTemplateCommandIncludingBackfill() {
         val store = FakeStore()
         val closed = mutableStateOf(false)
         show(store, closed = closed)
         compose.onNodeWithTag("use_suggested_template").assertIsDisplayed().performClick()
         compose.waitUntil { closed.value }
         compose.runOnIdle {
-            assertEquals(2, store.commands.size)
+            assertEquals(1, store.commands.size)
             val put = store.commands[0] as LedgerCommand.PutTemplate
             assertTrue(put.definition.enabled)
             assertNotEquals("suggested-google-wallet-hkd", put.definition.id)
-            val refresh = store.commands[1] as LedgerCommand.RepreviewReceipt
-            assertEquals("synthetic-receipt", refresh.receiptId)
-            assertEquals(3, refresh.expectedRevision)
             assertTrue(store.commands.none { it is LedgerCommand.SaveCaptured || it is LedgerCommand.Save })
         }
     }
@@ -61,12 +58,11 @@ class SuggestedTemplateStartTest {
         compose.onNodeWithTag("use_suggested_template").performScrollTo().assertIsDisplayed().assertIsEnabled().performClick()
         compose.waitUntil { closed.value }
         compose.runOnIdle {
-            assertEquals(3, store.commands.size)
+            assertEquals(2, store.commands.size)
             val first = store.commands[0] as LedgerCommand.PutTemplate
             val retry = store.commands[1] as LedgerCommand.PutTemplate
             assertEquals(first.operationId, retry.operationId)
             assertEquals(first.definition, retry.definition)
-            assertTrue(store.commands[2] is LedgerCommand.RepreviewReceipt)
         }
     }
 

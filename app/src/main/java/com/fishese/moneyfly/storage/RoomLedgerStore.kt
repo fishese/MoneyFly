@@ -203,7 +203,16 @@ class RoomLedgerStore(private val database: LedgerDatabase,
                     val old = dao.rule(command.id)
                     checkRevision(command.id, command.expectedRevision, old?.revision) ?: run { dao.deleteRule(command.id); dao.retire(RetiredEntityRow("rule", command.id)); applied(command.id, old!!.revision + 1) }
                 }
-                is LedgerCommand.PutTemplate, is LedgerCommand.SetTemplateEnabled, is LedgerCommand.DeleteTemplate, is LedgerCommand.RepreviewReceipt -> templateWriter.execute(command)
+                is LedgerCommand.PutTemplate, is LedgerCommand.SetTemplateEnabled, is LedgerCommand.DeleteTemplate, is LedgerCommand.RepreviewReceipt -> {
+                    val saved = templateWriter.execute(command)
+                    val source = when (command) {
+                        is LedgerCommand.PutTemplate -> command.definition.takeIf { it.enabled }?.sourcePackage
+                        is LedgerCommand.SetTemplateEnabled -> if (command.enabled) templateDao.latest(command.templateId)?.let { TemplateCodec.decode(it.definition).sourcePackage } else null
+                        else -> null
+                    }
+                    if (saved.applied && source != null) inboxWriter.applyTemplateToPending(source, now, command.operationId, ::validate)
+                    saved
+                }
                 is LedgerCommand.PutIgnoreRule, is LedgerCommand.SetIgnoreRuleEnabled, is LedgerCommand.DeleteIgnoreRule -> ignoreRuleWriter.execute(command)
                 else -> inboxWriter.execute(command, now, ::validate)
             }
@@ -240,7 +249,7 @@ class RoomLedgerStore(private val database: LedgerDatabase,
     companion object {
         /** A new app-owned database; deliberately has no old-database migrations or imports. */
         fun open(context: Context): RoomLedgerStore = RoomLedgerStore(Room.databaseBuilder(context.applicationContext, LedgerDatabase::class.java, "moneyfly_next_ledger_v1.db")
-            .addMigrations(LEDGER_MIGRATION_1_2, LEDGER_MIGRATION_2_3, LEDGER_MIGRATION_3_4, LEDGER_MIGRATION_4_5)
+            .addMigrations(LEDGER_MIGRATION_1_2, LEDGER_MIGRATION_2_3, LEDGER_MIGRATION_3_4, LEDGER_MIGRATION_4_5, LEDGER_MIGRATION_5_6)
             .addCallback(object : androidx.room.RoomDatabase.Callback() {
                 override fun onOpen(db: androidx.sqlite.db.SupportSQLiteDatabase) { seedDefaultStatusRules(db) }
             }).build())

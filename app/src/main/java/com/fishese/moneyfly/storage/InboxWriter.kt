@@ -2,6 +2,8 @@ package com.fishese.moneyfly.storage
 
 import com.fishese.moneyfly.capture.*
 import com.fishese.moneyfly.ledger.*
+import com.fishese.moneyfly.recognition.*
+import kotlinx.coroutines.flow.first
 import java.time.Duration
 import java.time.Instant
 import java.util.UUID
@@ -13,7 +15,7 @@ data class RawRetention(val maxAge: Duration = Duration.ofDays(7), val maxItems:
 /** Invoked exclusively inside the ledger writer's transaction. */
 internal class InboxWriter(private val dao: InboxDao, private val ledger: LedgerDao, private val digester: ReceiptDigester, private val retention: RawRetention, private val templates: TemplateWriter, private val ignoreRules: IgnoreRuleWriter) {
     suspend fun execute(command: LedgerCommand, now: Instant, validate: suspend (EntryDraft) -> EntryDraft): CommandResult = when (command) {
-        is LedgerCommand.CaptureNotification -> capture(command, now)
+        is LedgerCommand.CaptureNotification -> capture(command, now, validate)
         is LedgerCommand.NotificationRemoved -> {
             val key = slotKey(command.sourcePackage, command.userScope, command.notificationKey)
             dao.slot(key)?.let { dao.putSlot(it.copy(active = false)); dao.deleteExpiredRevisions(it.episodeId) }
@@ -80,7 +82,7 @@ internal class InboxWriter(private val dao: InboxDao, private val ledger: Ledger
         else -> error("Unsupported Inbox command")
     }
 
-    private suspend fun capture(command: LedgerCommand.CaptureNotification, now: Instant): CommandResult {
+    private suspend fun capture(command: LedgerCommand.CaptureNotification, now: Instant, validate: suspend (EntryDraft) -> EntryDraft): CommandResult {
         val p = command.payload
         require(p.sourcePackage.isNotBlank() && p.sourcePackage.length <= 300) { "A source package is required." }
         require(p.userScope.isNotBlank() && p.userScope.length <= 500 && p.notificationKey.isNotBlank() && p.notificationKey.length <= 2000) { "Invalid notification identity." }
@@ -111,8 +113,56 @@ internal class InboxWriter(private val dao: InboxDao, private val ledger: Ledger
             maxOf(siblings.maxOfOrNull { it.contentRevision } ?: 0, expired.maxOfOrNull { it.contentRevision } ?: 0) + 1, 1, null, null, false)
         if (source == null) dao.putSource(SourceRow(p.sourcePackage, false, false, 1))
         dao.putSlot(NotificationSlotRow(slotKey, episode, true))
-        dao.putReceipt(row); dao.putRaw(RawRow(row.id, raw, now.toEpochMilli(), bytes)); templates.freeze(row, p); prune(now)
-        return ok(row.id, row.revision)
+        dao.putReceipt(row); dao.putRaw(RawRow(row.id, raw, now.toEpochMilli(), bytes))
+        val recognized = templates.freeze(row, p)
+        recordIfClear(row, p, recognized, now, command.operationId, validate)
+        prune(now)
+        return ok(row.id, dao.receipt(row.id)?.revision ?: row.revision)
+    }
+
+    /** Template enrollment and this backfill share the same ledger transaction. */
+    suspend fun applyTemplateToPending(sourcePackage: String, now: Instant, operationId: String, validate: suspend (EntryDraft) -> EntryDraft) {
+        if (dao.source(sourcePackage)?.ignored == true) return
+        val compiled = ignoreRules.currentCompiled()
+        val pending = dao.receipts().first().filter { it.sourcePackage == sourcePackage && it.settlement == null && !it.removed }
+            .sortedWith(compareBy<ReceiptRow> { it.postedAt }.thenBy { it.id })
+        for (row in pending) {
+            val raw = dao.rawOnce(row.id) ?: continue
+            val payload = InboxRawCodec.decode(raw.payload, row)
+            if (IgnoreRuleMatcher.matchingRule(payload, compiled) != null) continue
+            val recognized = templates.freeze(row, payload)
+            // Invalidate any old editor/review snapshot even if this match remains pending.
+            val revised = row.copy(revision = row.revision + 1)
+            dao.putReceipt(revised)
+            recordIfClear(revised, payload, recognized, now, operationId, validate)
+        }
+    }
+
+    private suspend fun recordIfClear(row: ReceiptRow, p: NotificationPayload, recognized: RecognitionResult,
+        now: Instant, operationId: String, validate: suspend (EntryDraft) -> EntryDraft) {
+        val ignored = IgnoreRuleMatcher.matchingRule(p, ignoreRules.currentCompiled()) != null
+        if (!ignored && recognized.status == RecognitionStatus.READY && recognized.draft != null) {
+            if (row.contentRevision > 1 || dao.episodeReceipts(row.episodeId).any { it.contentRevision > 1 || it.entryId != null } || dao.expiredRevisions(row.episodeId).isNotEmpty()) {
+                templates.requireReview(row, recognized, "This notification changed. Review its revisions before recording.")
+                return
+            }
+            val draft = try { validate(recognized.draft.copy(sourcePackage = p.sourcePackage)) } catch (_: IllegalArgumentException) { null }
+            if (draft == null) templates.requireReview(row, recognized, "The matched entry needs review before saving.")
+            else {
+                val entries = ledger.entries().first().map { it.toEntry() }
+                val possibleDuplicate = possibleDuplicateEntries(draft, entries).isNotEmpty() ||
+                    entries.any { other -> other.draft.currency == draft.currency && other.draft.kind == draft.kind &&
+                        java.math.BigDecimal(other.draft.amount).compareTo(java.math.BigDecimal(draft.amount)) == 0 &&
+                        (draft.merchant.isBlank() || other.draft.merchant.isBlank()) &&
+                        Duration.between(other.draft.occurredAt, draft.occurredAt).abs() <= Duration.ofDays(2) }
+                if (possibleDuplicate) templates.requireReview(row, recognized, "A possible duplicate exists. Review before saving another entry.")
+                else {
+                    val entry = LedgerEntry("capture:${row.id}", 1, draft, false, now, now, operationId)
+                    ledger.putEntry(entry.toRow())
+                    dao.putReceipt(row.copy(revision = row.revision + 1, settlement = "SAVED", entryId = entry.id))
+                }
+            }
+        }
     }
 
     suspend fun prune(now: Instant) {
