@@ -121,7 +121,8 @@ internal class InboxWriter(private val dao: InboxDao, private val ledger: Ledger
     }
 
     /** Template enrollment and this backfill share the same ledger transaction. */
-    suspend fun applyTemplateToPending(sourcePackage: String, now: Instant, operationId: String, validate: suspend (EntryDraft) -> EntryDraft) {
+    suspend fun applyTemplateToPending(sourcePackage: String, now: Instant, operationId: String, validate: suspend (EntryDraft) -> EntryDraft,
+        selectedTemplate: TemplateDefinition? = null) {
         if (dao.source(sourcePackage)?.ignored == true) return
         val compiled = ignoreRules.currentCompiled()
         val episodeReceipts = dao.receipts().first()
@@ -132,7 +133,7 @@ internal class InboxWriter(private val dao: InboxDao, private val ledger: Ledger
             val raw = dao.rawOnce(row.id) ?: continue
             val payload = InboxRawCodec.decode(raw.payload, row)
             if (IgnoreRuleMatcher.matchingRule(payload, compiled) != null) continue
-            val recognized = templates.freeze(row, payload)
+            val recognized = templates.freeze(row, payload, selectedTemplate)
             // Invalidate any old editor/review snapshot even if this match remains pending.
             val revised = row.copy(revision = row.revision + 1)
             dao.putReceipt(revised)

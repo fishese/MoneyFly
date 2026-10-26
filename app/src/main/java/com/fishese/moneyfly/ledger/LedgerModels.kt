@@ -73,6 +73,7 @@ sealed interface LedgerCommand {
     data class SetTemplateEnabled(val templateId: String, val expectedRevision: Long, val enabled: Boolean, override val operationId: String = UUID.randomUUID().toString()) : LedgerCommand
     data class DeleteTemplate(val templateId: String, val expectedRevision: Long, override val operationId: String = UUID.randomUUID().toString()) : LedgerCommand
     data class RepreviewReceipt(val receiptId: String, val expectedRevision: Long, override val operationId: String = UUID.randomUUID().toString()) : LedgerCommand
+    data class ApplyTemplateToPending(val templateId: String, val expectedRevision: Long, override val operationId: String = UUID.randomUUID().toString()) : LedgerCommand
     data class PutIgnoreRule(val rule: IgnoreRule, val expectedRevision: Long? = null, override val operationId: String = UUID.randomUUID().toString()) : LedgerCommand
     data class SetIgnoreRuleEnabled(val ruleId: String, val expectedRevision: Long, val enabled: Boolean, override val operationId: String = UUID.randomUUID().toString()) : LedgerCommand
     data class DeleteIgnoreRule(val ruleId: String, val expectedRevision: Long, override val operationId: String = UUID.randomUUID().toString()) : LedgerCommand

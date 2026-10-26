@@ -65,6 +65,7 @@ internal object CommandFingerprint {
                 is LedgerCommand.SetTemplateEnabled -> { add("set-template-enabled"); add(command.templateId); add(command.expectedRevision); add(command.enabled) }
                 is LedgerCommand.DeleteTemplate -> { add("delete-template"); add(command.templateId); add(command.expectedRevision) }
                 is LedgerCommand.RepreviewReceipt -> { add("repreview-receipt"); add(command.receiptId); add(command.expectedRevision) }
+                is LedgerCommand.ApplyTemplateToPending -> { add("apply-template-to-pending"); add(command.templateId); add(command.expectedRevision) }
                 is LedgerCommand.PutIgnoreRule -> {
                     val r = command.rule
                     add("put-ignore-rule"); add(r.id); add(r.name); add(r.sourcePackage); add(r.field.name)

@@ -118,9 +118,13 @@
     <string name="template_save_failed">無法儲存範本。範本可能已變更，重試前請先檢查設定。</string>
     <string name="template_retry_save">儲存中斷。請按儲存範本重試相同變更，或取消並先檢查設定，再建立另一個範本。</string>
     <string name="templates">範本</string>
-    <string name="template_settings_hint">啟用的範本會自動記錄新的明確符合項目。停用範本可暫停以後的自動記帳。已儲存記錄保持不變。</string>
+    <string name="template_settings_hint">啟用的範本會自動記錄新的明確符合項目。你亦可將單一範本套用至保留的通知。</string>
     <string name="no_templates">請從收件匣保留的通知建立範本。</string>
     <string name="template_enabled">已啟用</string>
+    <string name="template_apply_existing">套用至現有訊息</string>
+    <string name="template_apply_title">現在套用範本？</string>
+    <string name="template_apply_explanation">將「%1$s」套用至此應用程式中最新保留且尚未記帳的訊息。明確符合項目會立即記帳。可能重複或不明確的項目會留在收件匣供檢查。已儲存或忽略的訊息會略過。</string>
+    <string name="template_apply_done">已檢查現有訊息</string>
     <string name="delete_template">刪除此範本？</string>
     <string name="template_delete_hint">日後通知將不再使用此範本。已儲存的帳簿記錄保持不變。</string>
     <string name="repreview_item">重新預覽此待處理項目</string>

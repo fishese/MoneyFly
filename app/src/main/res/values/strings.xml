@@ -118,9 +118,13 @@
     <string name="template_save_failed">Could not save the template. It may have changed; check Settings before retrying.</string>
     <string name="template_retry_save">Save was interrupted. Tap Save template to retry the same change, or cancel and check Settings before starting another template.</string>
     <string name="templates">Templates</string>
-    <string name="template_settings_hint">Enabled templates automatically record new clear matches. Disable a template to pause future automatic recording. Saved entries stay unchanged.</string>
+    <string name="template_settings_hint">Enabled templates automatically record new clear matches. Use Apply to existing messages to run one template over retained notifications.</string>
     <string name="no_templates">Create a template from a retained notification in the Inbox.</string>
     <string name="template_enabled">Enabled</string>
+    <string name="template_apply_existing">Apply to existing messages</string>
+    <string name="template_apply_title">Apply template now?</string>
+    <string name="template_apply_explanation">Apply “%1$s” to the latest retained, unrecorded messages from this app. Clear matches will be recorded now. Possible duplicates and unclear matches remain in Inbox for review. Saved or ignored messages are skipped.</string>
+    <string name="template_apply_done">Existing messages checked</string>
     <string name="delete_template">Delete this template?</string>
     <string name="template_delete_hint">Future notifications will no longer use this template. Saved ledger entries remain unchanged.</string>
     <string name="repreview_item">Repreview this pending item</string>

@@ -215,6 +215,18 @@ class RoomLedgerStore(private val database: LedgerDatabase,
                     if (saved.applied && source != null) inboxWriter.applyTemplateToPending(source, now, command.operationId, ::validate)
                     saved
                 }
+                is LedgerCommand.ApplyTemplateToPending -> {
+                    val template = templateDao.latest(command.templateId)
+                    when {
+                        template == null || template.deleted -> CommandResult(CommandStatus.NOT_FOUND, message = "This template no longer exists.")
+                        template.revision != command.expectedRevision -> CommandResult(CommandStatus.CONFLICT, template.id, template.revision, message = "This template changed. Review the latest version.")
+                        else -> {
+                            val definition = TemplateCodec.decode(template.definition)
+                            inboxWriter.applyTemplateToPending(definition.sourcePackage, now, command.operationId, ::validate, definition)
+                            CommandResult(CommandStatus.APPLIED, template.id, template.revision)
+                        }
+                    }
+                }
                 is LedgerCommand.PutIgnoreRule, is LedgerCommand.SetIgnoreRuleEnabled, is LedgerCommand.DeleteIgnoreRule -> ignoreRuleWriter.execute(command)
                 else -> inboxWriter.execute(command, now, ::validate)
             }

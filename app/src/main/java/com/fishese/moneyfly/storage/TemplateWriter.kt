@@ -57,9 +57,12 @@ internal class TemplateWriter(private val dao: TemplateDao, private val inbox: I
         }
         return ok(definition.id, definition.revision)
     }
-    suspend fun freeze(row: ReceiptRow, payload: NotificationPayload): RecognitionResult {
-        val result = if (inbox.source(row.sourcePackage)?.parsingEnabled == true)
-            TemplateEngine.recognize(payload, dao.current().map { TemplateCodec.decode(it.definition) }) else RecognitionResult(RecognitionStatus.NO_MATCH)
+    suspend fun freeze(row: ReceiptRow, payload: NotificationPayload, selectedTemplate: TemplateDefinition? = null): RecognitionResult {
+        val result = when {
+            selectedTemplate != null -> TemplateEngine.recognize(payload, listOf(selectedTemplate.copy(enabled = true)))
+            inbox.source(row.sourcePackage)?.parsingEnabled == true -> TemplateEngine.recognize(payload, dao.current().map { TemplateCodec.decode(it.definition) })
+            else -> RecognitionResult(RecognitionStatus.NO_MATCH)
+        }
         val json = TemplateCodec.recognition(result)
         val raw = inbox.rawOnce(row.id) ?: return result
         val rawBytes = raw.payload.toByteArray(Charsets.UTF_8).size.toLong()

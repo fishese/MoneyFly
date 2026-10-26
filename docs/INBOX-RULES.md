@@ -18,6 +18,12 @@ for review. Disable a template or source parsing to pause future automatic
 recording. Existing entries stay editable and unchanged.
 Saved receipts retain the template ID/revision after retained raw content expires.
 
+Settings → Templates also has **Apply to existing messages** for a one-time run
+of that specific template. It can run while the template is disabled, but does
+not enable it for future notifications. The latest revision of each retained,
+unrecorded message is considered; saved, ignored, app-ignored and expired messages
+are skipped. Possible duplicates and unclear matches stay in Inbox.
+
 ## Ignore similar messages
 
 Open a message, choose **More actions → Similar messages** (also available from

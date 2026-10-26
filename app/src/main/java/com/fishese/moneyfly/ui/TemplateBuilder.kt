@@ -238,17 +238,29 @@ internal fun compileStaticRestrictions(payload: NotificationPayload, selections:
 internal fun TemplateSettings(templates: List<TemplateDefinition>, execute: (LedgerCommand, () -> Unit) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf<TemplateDefinition?>(null) }
+    var applying by remember { mutableStateOf<TemplateDefinition?>(null) }
+    var appliedId by remember { mutableStateOf<String?>(null) }
     OutlinedButton(onClick = { expanded = !expanded }, modifier = Modifier.testTag("template_settings")) { Text(stringResource(R.string.templates)) }
     if (expanded) {
         Text(stringResource(R.string.template_settings_hint), style = MaterialTheme.typography.bodySmall)
         if (templates.isEmpty()) Text(stringResource(R.string.no_templates))
         templates.forEach { template ->
-            Text(template.name, style = MaterialTheme.typography.titleSmall)
-            Text(template.sourcePackage, style = MaterialTheme.typography.bodySmall)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(stringResource(R.string.template_enabled), Modifier.weight(1f))
-                Switch(template.enabled, { execute(LedgerCommand.SetTemplateEnabled(template.id, template.revision, it)) {} })
-                TextButton(onClick = { deleting = template }) { Text(stringResource(R.string.delete)) }
+            Surface(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surfaceContainerLow) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(template.name, style = MaterialTheme.typography.titleSmall)
+                    Text(template.sourcePackage, style = MaterialTheme.typography.bodySmall)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        Text(stringResource(R.string.template_enabled), Modifier.weight(1f))
+                        Switch(template.enabled, { appliedId = null; execute(LedgerCommand.SetTemplateEnabled(template.id, template.revision, it)) {} })
+                        TextButton(onClick = { deleting = template }) { Text(stringResource(R.string.delete)) }
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        TextButton(onClick = { applying = template }, modifier = Modifier.testTag("apply_template_${template.id}")) {
+                            Text(stringResource(R.string.template_apply_existing))
+                        }
+                        if (appliedId == template.id) Text(stringResource(R.string.template_apply_done), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                    }
+                }
             }
         }
     }
@@ -256,5 +268,21 @@ internal fun TemplateSettings(templates: List<TemplateDefinition>, execute: (Led
         AlertDialog(onDismissRequest = { deleting = null }, title = { Text(stringResource(R.string.delete_template)) }, text = { Text(stringResource(R.string.template_delete_hint)) },
             confirmButton = { TextButton(onClick = { execute(LedgerCommand.DeleteTemplate(template.id, template.revision)) { deleting = null } }) { Text(stringResource(R.string.delete)) } },
             dismissButton = { TextButton(onClick = { deleting = null }) { Text(stringResource(R.string.cancel)) } })
+    }
+    applying?.let { template ->
+        AlertDialog(
+            onDismissRequest = { applying = null },
+            title = { Text(stringResource(R.string.template_apply_title)) },
+            text = { Text(stringResource(R.string.template_apply_explanation, template.name)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    execute(LedgerCommand.ApplyTemplateToPending(template.id, template.revision)) {
+                        appliedId = template.id
+                        applying = null
+                    }
+                }, modifier = Modifier.testTag("confirm_apply_template")) { Text(stringResource(R.string.template_apply_existing)) }
+            },
+            dismissButton = { TextButton(onClick = { applying = null }) { Text(stringResource(R.string.cancel)) } },
+        )
     }
 }

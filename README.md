@@ -44,6 +44,8 @@ applies it to the latest retained pending version of each notification. Older
 versions, possible duplicates, ambiguous, grouped or incomplete notifications
 remain available for review. Event-time interpretation and account assignment
 remain explicit; posting time is labeled when used as a fallback.
+Settings → Templates also lets you apply one saved template to existing pending
+messages without enabling it for future notifications.
 
 ## Build
 
