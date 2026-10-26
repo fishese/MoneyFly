@@ -48,7 +48,7 @@
     <string name="saved_entry_unavailable">The linked entry is no longer available.</string>
     <string name="restore_item">Restore this item</string>
     <string name="removed_entry_explanation">The saved entry was deleted. Reposted notifications will not recreate it.</string>
-    <string name="updated_receipt_decision">This notification changed after a related item was saved. Decide whether it refers to the same purchase or a separate purchase.</string>
+    <string name="updated_receipt_decision">This app updated or reused its notification. Review this purchase before recording it separately.</string>
     <string name="possible_duplicate">A related notification already has an entry. Review the candidates before recording another purchase.</string>
     <string name="link_existing">Link to an existing entry</string>
     <string name="separate_purchase">Record as a separate purchase</string>
@@ -106,7 +106,7 @@
     <string name="synthetic_negative">Generated nonmatching example %1$d</string>
     <string name="extracted_preview">Extracted fields</string>
     <string name="preview_no_match">No match</string>
-    <string name="enable_template_effect">Saving enables this template and parsing for this app. Clear matches in retained pending messages and future notifications are recorded automatically. Changed messages, ambiguous matches and possible duplicates stay in Inbox for review. Existing entries stay unchanged.</string>
+    <string name="enable_template_effect">Saving enables this template and parsing for this app. Clear matches in all retained pending messages and future notifications are recorded automatically. Ambiguous matches and possible duplicates stay in Inbox for review. Existing entries stay unchanged.</string>
     <string name="message_field">Notification field</string>
     <string name="notification_title">Title</string>
     <string name="notification_body">Body</string>
@@ -123,8 +123,7 @@
     <string name="template_enabled">Enabled</string>
     <string name="template_apply_existing">Apply to existing messages</string>
     <string name="template_apply_title">Apply template now?</string>
-    <string name="template_apply_explanation">Apply “%1$s” to the latest retained, unrecorded messages from this app. Clear matches will be recorded now. Possible duplicates and unclear matches remain in Inbox for review. Saved or ignored messages are skipped.</string>
-    <string name="template_apply_done">Existing messages checked</string>
+    <string name="template_apply_explanation">Apply “%1$s” to all retained, unrecorded messages from this app, including older notifications. Clear matches will be recorded now. Possible duplicates and unclear matches remain in Inbox for review. Saved or ignored messages are skipped.</string>
     <string name="delete_template">Delete this template?</string>
     <string name="template_delete_hint">Future notifications will no longer use this template. Saved ledger entries remain unchanged.</string>
     <string name="repreview_item">Repreview this pending item</string>
@@ -189,4 +188,22 @@
     <string name="source_scope">Source package (optional)</string>
     <string name="rule_conflict">Rules disagree: %1$s. Choose a category, or save as Uncategorized.</string>
     <string name="use_suggestion">Use suggested category: %1$s</string>
+    <string name="template_view">View template</string>
+    <string name="template_disabled">Disabled</string>
+    <string name="template_identity">Template ID: %1$s · Revision %2$d</string>
+    <string name="template_identical_copies">Identical copies: %1$d</string>
+    <string name="template_identical_to">Identical matching instructions: %1$s (%2$s)</string>
+    <string name="template_overlap_explanation">Other templates for this app: %1$d. Different formats are supported. Automatic recognition asks for review only when matching templates disagree. Identical copies do not record extra entries.</string>
+    <string name="template_pattern_help">Each field matches its whole pattern. Text in braces is extracted or allowed to vary; the surrounding text must match exactly. You can select and copy these patterns.</string>
+    <string name="template_slot_details">{%1$s}: maximum characters: %2$d · %3$s</string>
+    <string name="template_slot_numeric">numeric amount</string>
+    <string name="template_slot_text">variable text</string>
+    <string name="template_conditions">Additional matching conditions</string>
+    <string name="template_no_conditions">No additional conditions.</string>
+    <string name="template_starts_with">Starts with</string>
+    <string name="template_ends_with">Ends with</string>
+    <string name="template_case_sensitive">Case sensitive</string>
+    <string name="template_case_insensitive">Ignore case</string>
+    <string name="template_currency_literal">Currency is explicitly present in the matched format.</string>
+    <string name="template_apply_report">Checked: %1$d · Matched: %2$d\nRecorded: %3$d · Review: %4$d · No match: %5$d</string>
 </resources>

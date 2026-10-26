@@ -181,7 +181,7 @@ private fun ExampleField(label: String, source: String, value: String, tag: Stri
 }
 
 @Composable
-private fun messageFieldLabel(field: MessageField): String = stringResource(when (field) {
+internal fun messageFieldLabel(field: MessageField): String = stringResource(when (field) {
     MessageField.TITLE -> R.string.notification_title
     MessageField.BODY -> R.string.notification_body
     MessageField.BIG_TEXT -> R.string.notification_expanded_body
@@ -235,11 +235,16 @@ internal fun compileStaticRestrictions(payload: NotificationPayload, selections:
         listOf(TemplatePredicate(MessageField.TITLE, PredicateOperation.EQUALS, payload.title)) else emptyList()
 
 @Composable
-internal fun TemplateSettings(templates: List<TemplateDefinition>, execute: (LedgerCommand, () -> Unit) -> Unit) {
+internal fun TemplateSettings(templates: List<TemplateDefinition>, store: LedgerStore, execute: (LedgerCommand, () -> Unit) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf<TemplateDefinition?>(null) }
     var applying by remember { mutableStateOf<TemplateDefinition?>(null) }
-    var appliedId by remember { mutableStateOf<String?>(null) }
+    var reports by remember { mutableStateOf<Map<String, TemplateApplyReport>>(emptyMap()) }
+    var viewing by remember { mutableStateOf<String?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    var applyError by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    val failed = stringResource(R.string.operation_failed)
     OutlinedButton(onClick = { expanded = !expanded }, modifier = Modifier.testTag("template_settings")) { Text(stringResource(R.string.templates)) }
     if (expanded) {
         Text(stringResource(R.string.template_settings_hint), style = MaterialTheme.typography.bodySmall)
@@ -251,38 +256,58 @@ internal fun TemplateSettings(templates: List<TemplateDefinition>, execute: (Led
                     Text(template.sourcePackage, style = MaterialTheme.typography.bodySmall)
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                         Text(stringResource(R.string.template_enabled), Modifier.weight(1f))
-                        Switch(template.enabled, { appliedId = null; execute(LedgerCommand.SetTemplateEnabled(template.id, template.revision, it)) {} })
+                        Switch(template.enabled, { reports = reports - template.id; execute(LedgerCommand.SetTemplateEnabled(template.id, template.revision, it)) {} })
                         TextButton(onClick = { deleting = template }) { Text(stringResource(R.string.delete)) }
                     }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                        TextButton(onClick = { applying = template }, modifier = Modifier.testTag("apply_template_${template.id}")) {
+                        TextButton(onClick = { applyError = null; applying = template }, modifier = Modifier.weight(1.4f).testTag("apply_template_${template.id}")) {
                             Text(stringResource(R.string.template_apply_existing))
                         }
-                        if (appliedId == template.id) Text(stringResource(R.string.template_apply_done), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                        TextButton(onClick = { viewing = template.id }, modifier = Modifier.weight(1f).testTag("view_template_${template.id}")) {
+                            Text(stringResource(R.string.template_view))
+                        }
+                    }
+                    val identical = templates.count { it.id != template.id && it.hasSameContent(template) }
+                    if (identical > 0) Text(stringResource(R.string.template_identical_copies, identical), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary)
+                    reports[template.id]?.let { report ->
+                        Text(stringResource(R.string.template_apply_report, report.checked, report.matched, report.recorded, report.review, report.unmatched),
+                            style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("template_report_${template.id}"))
                     }
                 }
             }
         }
     }
+    viewing?.let { id -> templates.find { it.id == id }?.let { TemplateDetails(it, templates, close = { viewing = null }) } }
     deleting?.let { template ->
         AlertDialog(onDismissRequest = { deleting = null }, title = { Text(stringResource(R.string.delete_template)) }, text = { Text(stringResource(R.string.template_delete_hint)) },
             confirmButton = { TextButton(onClick = { execute(LedgerCommand.DeleteTemplate(template.id, template.revision)) { deleting = null } }) { Text(stringResource(R.string.delete)) } },
             dismissButton = { TextButton(onClick = { deleting = null }) { Text(stringResource(R.string.cancel)) } })
     }
     applying?.let { template ->
+        val command = remember(template.id, template.revision) { LedgerCommand.ApplyTemplateToPending(template.id, template.revision) }
         AlertDialog(
-            onDismissRequest = { applying = null },
+            onDismissRequest = { if (!busy) applying = null },
             title = { Text(stringResource(R.string.template_apply_title)) },
-            text = { Text(stringResource(R.string.template_apply_explanation, template.name)) },
+            text = { Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(stringResource(R.string.template_apply_explanation, template.name))
+                applyError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            } },
             confirmButton = {
-                TextButton(onClick = {
-                    execute(LedgerCommand.ApplyTemplateToPending(template.id, template.revision)) {
-                        appliedId = template.id
-                        applying = null
+                TextButton(enabled = !busy, onClick = {
+                    busy = true
+                    scope.launch {
+                        try {
+                            val result = store.execute(command)
+                            if (result.applied) {
+                                result.templateReport?.let { reports = reports + (template.id to it) }
+                                applying = null
+                            } else applyError = result.message ?: failed
+                        } catch (_: Exception) { applyError = failed }
+                        finally { busy = false }
                     }
-                }, modifier = Modifier.testTag("confirm_apply_template")) { Text(stringResource(R.string.template_apply_existing)) }
+                }, modifier = Modifier.testTag("confirm_apply_template")) { Text(stringResource(if (busy) R.string.saving else R.string.template_apply_existing)) }
             },
-            dismissButton = { TextButton(onClick = { applying = null }) { Text(stringResource(R.string.cancel)) } },
+            dismissButton = { TextButton(enabled = !busy, onClick = { applying = null }) { Text(stringResource(R.string.cancel)) } },
         )
     }
 }

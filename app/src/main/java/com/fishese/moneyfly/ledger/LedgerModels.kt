@@ -79,9 +79,11 @@ sealed interface LedgerCommand {
     data class DeleteIgnoreRule(val ruleId: String, val expectedRevision: Long, override val operationId: String = UUID.randomUUID().toString()) : LedgerCommand
 }
 enum class CommandStatus { APPLIED, CONFLICT, INVALID, NOT_FOUND }
+data class TemplateApplyReport(val checked: Int, val matched: Int, val recorded: Int, val review: Int, val unmatched: Int)
 data class CommandResult(
     val status: CommandStatus, val entityId: String? = null, val revision: Long? = null,
     val entry: LedgerEntry? = null, val message: String? = null, val replayed: Boolean = false,
+    val templateReport: TemplateApplyReport? = null,
 ) { val applied: Boolean get() = status == CommandStatus.APPLIED }
 
 interface LedgerStore {

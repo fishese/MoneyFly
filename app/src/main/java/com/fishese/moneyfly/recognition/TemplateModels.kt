@@ -27,6 +27,10 @@ data class TemplateDefinition(
     val enabled: Boolean = false, val revision: Long = 0,
 )
 enum class RecognitionStatus { NO_MATCH, READY, REVIEW_NEEDED }
+
+/** Ignore display identity and enablement when comparing the actual matching instructions. */
+fun TemplateDefinition.hasSameContent(other: TemplateDefinition): Boolean =
+    copy(id = "", name = "", revision = 0, enabled = false) == other.copy(id = "", name = "", revision = 0, enabled = false)
 data class RecognitionResult(val status: RecognitionStatus, val draft: EntryDraft? = null, val issues: List<String> = emptyList(),
     val templateId: String? = null, val templateRevision: Long? = null)
 data class SyntheticPreview(val name: String, val payload: NotificationPayload, val shouldMatch: Boolean, val result: RecognitionResult)

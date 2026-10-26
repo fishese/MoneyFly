@@ -47,3 +47,4 @@ app/src/androidTest/java/com/fishese/moneyfly/PrivateInboxReviewTest.kt
 *.pfx
 .env
 .env.*
+.codex-remote-attachments/

@@ -127,7 +127,7 @@ class TemplateStoreTest {
         assertEquals(2, store.entries.first().size)
         assertTrue(store.execute(command).replayed)
     }
-    @Test fun backfillUsesLatestRevisionSkipsIgnoredAndStillChecksDuplicatesWhenCapturePaused() = runBlocking {
+    @Test fun backfillIncludesHistoricalRevisionsSkipsIgnoredAndStillChecksDuplicatesWhenCapturePaused() = runBlocking {
         enableCapture()
         val first = capture("first")
         val duplicate = capture("duplicate")
@@ -145,6 +145,70 @@ class TemplateStoreTest {
         val changedEntry = items.single { it.payload?.body?.contains("CHANGED") == true }
         assertTrue(changedEntry.requiresRevisionDecision)
         assertEquals(InboxStatus.SAVED, changedEntry.status)
+    }
+
+    @Test fun explicitApplyRecoversOlderPurchasesEvenWhenLatestReusedNotificationDoesNotMatch() = runBlocking {
+        enableCapture()
+        capture("reused-slot")
+        now = now.plusSeconds(600)
+        store.execute(LedgerCommand.CaptureNotification(payload("reused-slot").copy(body = "Paid 21.56 at SYNTHETIC MARKET.")))
+        now = now.plusSeconds(600)
+        store.execute(LedgerCommand.CaptureNotification(payload("reused-slot").copy(body = "Synthetic non-purchase status")))
+        store.execute(LedgerCommand.SetCaptureConsent(false, 1))
+        store.execute(LedgerCommand.PutTemplate(definition().copy(enabled = false)))
+        val command = LedgerCommand.ApplyTemplateToPending("format", 1, "historical-apply")
+        val result = store.execute(command)
+        assertTrue(result.applied)
+        assertEquals(TemplateApplyReport(3, 2, 2, 0, 1), result.templateReport)
+        assertEquals(setOf("12.34", "21.56"), store.entries.first().map { it.draft.amount }.toSet())
+        assertFalse(store.templates.first().single().enabled)
+        db.close(); reopen()
+        val retry = store.execute(command)
+        assertTrue(retry.replayed); assertEquals(result.templateReport, retry.templateReport)
+        assertEquals(2, store.entries.first().size)
+    }
+
+    @Test fun historicalUpdatesOfOnePurchaseDoNotBookTwice() = runBlocking {
+        enableCapture(); capture("same-purchase")
+        now = now.plusSeconds(60)
+        store.execute(LedgerCommand.CaptureNotification(payload("same-purchase").copy(subText = "Synthetic status changed")))
+        store.execute(LedgerCommand.PutTemplate(definition().copy(enabled = false)))
+        val result = store.execute(LedgerCommand.ApplyTemplateToPending("format", 1))
+        assertEquals(TemplateApplyReport(2, 2, 1, 1, 0), result.templateReport)
+        assertEquals(1, store.entries.first().size)
+        assertTrue(store.inbox.first().single { it.status == InboxStatus.REVIEW_NEEDED }.issues.any { it.contains("duplicate") })
+        val saved = store.entries.first().single()
+        store.execute(LedgerCommand.Delete(saved.id, saved.revision))
+        val afterDelete = store.execute(LedgerCommand.ApplyTemplateToPending("format", 1))
+        assertEquals(0, afterDelete.templateReport!!.recorded)
+        assertTrue(store.entries.first().isEmpty())
+        assertTrue(store.inbox.first().single { it.status == InboxStatus.REVIEW_NEEDED }.issues.any { it.contains("deleted") })
+    }
+
+    @Test fun applyingUnrelatedTemplatePreservesUsefulPreviewAndReportsNoMatch() = runBlocking {
+        enableCapture(); store.execute(LedgerCommand.PutTemplate(definition()))
+        capture("saved"); val pending = capture("duplicate-for-review")
+        val other = definition().copy(id = "other", enabled = false,
+            patterns = listOf(TemplateEngine.parsePattern(MessageField.BODY, "Received {amount} from {merchant}.")))
+        store.execute(LedgerCommand.PutTemplate(other))
+        val result = store.execute(LedgerCommand.ApplyTemplateToPending("other", 1))
+        assertEquals(TemplateApplyReport(1, 0, 0, 0, 1), result.templateReport)
+        val preserved = store.inbox.first().single { it.id == pending.id }
+        assertEquals(pending.revision, preserved.revision)
+        assertEquals(pending.draft, preserved.draft)
+        assertEquals("format", preserved.matchTemplateId)
+        assertEquals(1, store.entries.first().size)
+    }
+
+    @Test fun enrollingIdenticalTemplateReusesItAndRestoresExplicitParsingEnrollment() = runBlocking {
+        store.execute(LedgerCommand.PutTemplate(definition()))
+        val source = store.sources.first().single()
+        store.execute(LedgerCommand.SetParsingSource(source.sourcePackage, false, source.revision))
+        val reused = store.execute(LedgerCommand.PutTemplate(definition().copy(id = "duplicate-copy", name = "Another display name")))
+        assertEquals("format", reused.entityId)
+        assertEquals(1, store.templates.first().size)
+        assertTrue(store.sources.first().single().parsingEnabled)
+        assertFalse(definition().hasSameContent(definition().copy(kind = EntryKind.INCOME)))
     }
     @Test fun savedAssumptionKeepsCompactTemplateVersionAfterRawAndDerivedDraftExpire() = runBlocking {
         enableCapture(); store.execute(LedgerCommand.PutTemplate(definition()))

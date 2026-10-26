@@ -246,7 +246,7 @@ private fun Settings(categories: List<Category>, accounts: List<AccountLabel>, a
             Text(stringResource(R.string.shell_notifications_hint), Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
             SourceSettings(sources) { command -> execute(command) {} }
             IgnoreRuleSettings(ignoreRules) { command -> execute(command) {} }
-            TemplateSettings(templates, execute)
+            TemplateSettings(templates, store, execute)
             Text(stringResource(R.string.local_journal), Modifier.padding(vertical = 20.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }

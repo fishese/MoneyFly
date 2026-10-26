@@ -47,6 +47,19 @@ internal class TemplateWriter(private val dao: TemplateDao, private val inbox: I
         require(errors.isEmpty()) { errors.joinToString(" ") }
         val examples = TemplateEngine.generatedExamples(input)
         require(examples.size == 3 && examples.all { (it.result.status == RecognitionStatus.READY) == it.shouldMatch }) { "The synthetic format variations must pass before saving a template." }
+        if (old == null) {
+            val identical = dao.current().map { TemplateCodec.decode(it.definition) }
+                .firstOrNull { it.hasSameContent(input) }
+            if (identical != null) {
+                // Reuse an existing format; explicit enrollment may enable it, but never creates a second copy.
+                if (input.enabled && !identical.enabled) return put(identical.copy(enabled = true), identical.revision)
+                if (input.enabled) {
+                    val source = inbox.source(identical.sourcePackage) ?: SourceRow(identical.sourcePackage, false, false, 0)
+                    if (!source.parsingEnabled) inbox.putSource(source.copy(parsingEnabled = true, revision = source.revision + 1))
+                }
+                return ok(identical.id, identical.revision)
+            }
+        }
         require(!input.enabled || dao.current().count { it.enabled && it.id != input.id } < 100) { "At most 100 templates may be enabled." }
         val definition = input.copy(revision = (old?.revision ?: 0) + 1)
         // All validation precedes either related write; writer transaction commits both together.
@@ -63,6 +76,8 @@ internal class TemplateWriter(private val dao: TemplateDao, private val inbox: I
             inbox.source(row.sourcePackage)?.parsingEnabled == true -> TemplateEngine.recognize(payload, dao.current().map { TemplateCodec.decode(it.definition) })
             else -> RecognitionResult(RecognitionStatus.NO_MATCH)
         }
+        // Applying an unrelated template must not erase a useful preview from another template.
+        if (selectedTemplate != null && result.status == RecognitionStatus.NO_MATCH) return result
         val json = TemplateCodec.recognition(result)
         val raw = inbox.rawOnce(row.id) ?: return result
         val rawBytes = raw.payload.toByteArray(Charsets.UTF_8).size.toLong()

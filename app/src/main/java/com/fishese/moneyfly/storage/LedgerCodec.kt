@@ -25,7 +25,12 @@ internal object LedgerCodec {
         put("status", result.status.name); put("entityId", result.entityId ?: JSONObject.NULL)
         put("revision", result.revision ?: JSONObject.NULL); put("entry", result.entry?.let { entry(it) } ?: JSONObject.NULL)
         put("message", result.message ?: JSONObject.NULL)
+        result.templateReport?.let { report -> put("templateReport", JSONObject().apply {
+            put("checked", report.checked); put("matched", report.matched); put("recorded", report.recorded)
+            put("review", report.review); put("unmatched", report.unmatched)
+        }) }
     }.toString()
     fun result(json: String): CommandResult = JSONObject(json).let { j -> CommandResult(CommandStatus.valueOf(j.getString("status")), j.nullable("entityId"),
-        if (j.isNull("revision")) null else j.getLong("revision"), j.nullable("entry")?.let { entry(it) }, j.nullable("message")) }
+        if (j.isNull("revision")) null else j.getLong("revision"), j.nullable("entry")?.let { entry(it) }, j.nullable("message"),
+        templateReport = j.optJSONObject("templateReport")?.let { TemplateApplyReport(it.getInt("checked"), it.getInt("matched"), it.getInt("recorded"), it.getInt("review"), it.getInt("unmatched")) }) }
 }

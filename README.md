@@ -40,12 +40,14 @@ Narrow system charging/launcher status rules are reversible defaults.
 Templates extract changing amounts, merchants and optional fields. Matching
 suggestions are optional and must pass current-message and synthetic variation
 checks. New clear matches record automatically. Saving an enabled template also
-applies it to the latest retained pending version of each notification. Older
-versions, possible duplicates, ambiguous, grouped or incomplete notifications
-remain available for review. Event-time interpretation and account assignment
+applies it to all retained, unrecorded notification messages, including older
+messages from apps that reuse a notification. Possible duplicates, ambiguous,
+grouped or incomplete notifications remain available for review. Event-time interpretation and account assignment
 remain explicit; posting time is labeled when used as a fallback.
 Settings → Templates also lets you apply one saved template to existing pending
-messages without enabling it for future notifications.
+messages without enabling it for future notifications. View template shows the
+exact patterns, conditions, extracted fields and currency settings. Identical
+copies are labeled; enrolling an identical format reuses the saved template.
 
 ## Build
 

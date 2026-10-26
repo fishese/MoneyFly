@@ -222,8 +222,8 @@ class RoomLedgerStore(private val database: LedgerDatabase,
                         template.revision != command.expectedRevision -> CommandResult(CommandStatus.CONFLICT, template.id, template.revision, message = "This template changed. Review the latest version.")
                         else -> {
                             val definition = TemplateCodec.decode(template.definition)
-                            inboxWriter.applyTemplateToPending(definition.sourcePackage, now, command.operationId, ::validate, definition)
-                            CommandResult(CommandStatus.APPLIED, template.id, template.revision)
+                            val report = inboxWriter.applyTemplateToPending(definition.sourcePackage, now, command.operationId, ::validate, definition)
+                            CommandResult(CommandStatus.APPLIED, template.id, template.revision, templateReport = report)
                         }
                     }
                 }

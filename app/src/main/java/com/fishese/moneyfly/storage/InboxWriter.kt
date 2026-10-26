@@ -122,27 +122,34 @@ internal class InboxWriter(private val dao: InboxDao, private val ledger: Ledger
 
     /** Template enrollment and this backfill share the same ledger transaction. */
     suspend fun applyTemplateToPending(sourcePackage: String, now: Instant, operationId: String, validate: suspend (EntryDraft) -> EntryDraft,
-        selectedTemplate: TemplateDefinition? = null) {
-        if (dao.source(sourcePackage)?.ignored == true) return
+        selectedTemplate: TemplateDefinition? = null): TemplateApplyReport {
+        if (dao.source(sourcePackage)?.ignored == true) return TemplateApplyReport(0, 0, 0, 0, 0)
         val compiled = ignoreRules.currentCompiled()
         val episodeReceipts = dao.receipts().first()
         val pending = episodeReceipts.filter { it.sourcePackage == sourcePackage && it.settlement == null && !it.removed }
             .sortedWith(compareBy<ReceiptRow> { it.postedAt }.thenBy { it.id })
-        val latestRevisionByEpisode = episodeReceipts.groupBy { it.episodeId }.mapValues { (_, rows) -> rows.maxOf { it.contentRevision } }
+        var checked = 0; var matched = 0; var recorded = 0; var review = 0; var unmatched = 0
         for (row in pending) {
             val raw = dao.rawOnce(row.id) ?: continue
             val payload = InboxRawCodec.decode(raw.payload, row)
             if (IgnoreRuleMatcher.matchingRule(payload, compiled) != null) continue
+            checked++
             val recognized = templates.freeze(row, payload, selectedTemplate)
+            if (recognized.status == RecognitionStatus.NO_MATCH) {
+                unmatched++
+                if (selectedTemplate != null) continue
+            }
+            if (recognized.status == RecognitionStatus.READY) matched++
             // Invalidate any old editor/review snapshot even if this match remains pending.
             val revised = row.copy(revision = row.revision + 1)
             dao.putReceipt(revised)
-            if (row.contentRevision < latestRevisionByEpisode[row.episodeId]!!) {
-                templates.requireReview(revised, recognized, "A newer notification update exists. Review the latest version before recording.")
-            } else {
-                recordIfClear(revised, payload, recognized, now, operationId, validate)
-            }
+            // Apps can reuse one Android notification for many purchases. Each retained message
+            // is eligible; the ledger duplicate check, rather than its notification revision, decides.
+            recordIfClear(revised, payload, recognized, now, operationId, validate)
+            if (dao.receipt(row.id)?.settlement == "SAVED") recorded++
+            else if (recognized.status != RecognitionStatus.NO_MATCH) review++
         }
+        return TemplateApplyReport(checked, matched, recorded, review, unmatched)
     }
 
     private suspend fun recordIfClear(row: ReceiptRow, p: NotificationPayload, recognized: RecognitionResult,
@@ -152,6 +159,18 @@ internal class InboxWriter(private val dao: InboxDao, private val ledger: Ledger
             val draft = try { validate(recognized.draft.copy(sourcePackage = p.sourcePackage)) } catch (_: IllegalArgumentException) { null }
             if (draft == null) templates.requireReview(row, recognized, "The matched entry needs review before saving.")
             else {
+                val relatedIds = dao.episodeReceipts(row.episodeId).mapNotNull { it.entryId }.distinct()
+                val deletedPurchase = relatedIds.mapNotNull { ledger.entry(it)?.toEntry() }.any { entry ->
+                    val other = entry.draft
+                    entry.deleted && other.currency == draft.currency && other.kind == draft.kind &&
+                        java.math.BigDecimal(other.amount).compareTo(java.math.BigDecimal(draft.amount)) == 0 &&
+                        Categorization.normalize(other.canonicalMerchant ?: other.merchant) == Categorization.normalize(draft.canonicalMerchant ?: draft.merchant) &&
+                        Duration.between(other.occurredAt, draft.occurredAt).abs() <= Duration.ofDays(2)
+                }
+                if (deletedPurchase) {
+                    templates.requireReview(row, recognized, "A related entry was deleted. Review before creating another entry.")
+                    return
+                }
                 val entries = ledger.entries().first().map { it.toEntry() }
                 val possibleDuplicate = possibleDuplicateEntries(draft, entries).isNotEmpty() ||
                     entries.any { other -> other.draft.currency == draft.currency && other.draft.kind == draft.kind &&

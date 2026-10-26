@@ -48,7 +48,7 @@
     <string name="saved_entry_unavailable">連結的記錄已無法使用。</string>
     <string name="restore_item">還原此項目</string>
     <string name="removed_entry_explanation">已儲存的記錄已被刪除。通知再次發出時不會重新建立記錄。</string>
-    <string name="updated_receipt_decision">相關項目儲存後，此通知已更新。請決定是否屬於同一筆或另一筆交易。</string>
+    <string name="updated_receipt_decision">此應用程式更新或重用了通知。請檢查這筆交易，再決定是否獨立記錄。</string>
     <string name="possible_duplicate">相關通知已有記錄。請先檢視候選記錄，再新增另一筆交易。</string>
     <string name="link_existing">連結現有記錄</string>
     <string name="separate_purchase">記錄為另一筆交易</string>
@@ -106,7 +106,7 @@
     <string name="synthetic_negative">產生的不相符例子 %1$d</string>
     <string name="extracted_preview">擷取欄位</string>
     <string name="preview_no_match">不相符</string>
-    <string name="enable_template_effect">儲存會啟用範本及此來源的解析。保留的待處理訊息及以後通知中，明確符合的項目會自動記帳。已變更、含糊或可能重複的訊息會留在收件匣供檢查。現有記錄保持不變。</string>
+    <string name="enable_template_effect">儲存會啟用範本及此來源的解析。保留的所有待處理訊息及以後通知中，明確符合的項目會自動記帳。含糊或可能重複的訊息會留在收件匣供檢查。現有記錄保持不變。</string>
     <string name="message_field">通知欄位</string>
     <string name="notification_title">標題</string>
     <string name="notification_body">內文</string>
@@ -123,8 +123,7 @@
     <string name="template_enabled">已啟用</string>
     <string name="template_apply_existing">套用至現有訊息</string>
     <string name="template_apply_title">現在套用範本？</string>
-    <string name="template_apply_explanation">將「%1$s」套用至此應用程式中最新保留且尚未記帳的訊息。明確符合項目會立即記帳。可能重複或不明確的項目會留在收件匣供檢查。已儲存或忽略的訊息會略過。</string>
-    <string name="template_apply_done">已檢查現有訊息</string>
+    <string name="template_apply_explanation">將「%1$s」套用至此應用程式保留且尚未記帳的所有訊息，包括較舊通知。明確符合項目會立即記帳。可能重複或不明確的項目會留在收件匣供檢查。已儲存或忽略的訊息會略過。</string>
     <string name="delete_template">刪除此範本？</string>
     <string name="template_delete_hint">日後通知將不再使用此範本。已儲存的帳簿記錄保持不變。</string>
     <string name="repreview_item">重新預覽此待處理項目</string>
@@ -189,4 +188,22 @@
     <string name="source_scope">來源套件名稱（可留空）</string>
     <string name="rule_conflict">規則有衝突：%1$s。請選擇分類，或以未分類儲存。</string>
     <string name="use_suggestion">使用建議分類：%1$s</string>
+    <string name="template_view">檢視範本</string>
+    <string name="template_disabled">已停用</string>
+    <string name="template_identity">範本 ID：%1$s · 版本 %2$d</string>
+    <string name="template_identical_copies">%1$d 個相同範本副本</string>
+    <string name="template_identical_to">配對條件完全相同：%1$s（%2$s）</string>
+    <string name="template_overlap_explanation">另有 %1$d 個範本使用此應用程式。可以有多種格式；只有符合的範本擷取結果不同時，自動辨識才會要求檢查。相同副本不會額外記帳。</string>
+    <string name="template_pattern_help">每個欄位須完整符合模式。大括號內的文字會被擷取或容許變動；其餘文字必須完全相符。你可以選取及複製模式。</string>
+    <string name="template_slot_details">{%1$s}：最多 %2$d 字元 · %3$s</string>
+    <string name="template_slot_numeric">數字金額</string>
+    <string name="template_slot_text">可變文字</string>
+    <string name="template_conditions">其他配對條件</string>
+    <string name="template_no_conditions">沒有其他條件。</string>
+    <string name="template_starts_with">開頭為</string>
+    <string name="template_ends_with">結尾為</string>
+    <string name="template_case_sensitive">區分大小寫</string>
+    <string name="template_case_insensitive">不分大小寫</string>
+    <string name="template_currency_literal">貨幣明確包含在相符的格式內。</string>
+    <string name="template_apply_report">已檢查 %1$d 則 · 符合 %2$d 則\n已記錄 %3$d 則 · 待檢查 %4$d 則 · 不符 %5$d 則</string>
 </resources>
