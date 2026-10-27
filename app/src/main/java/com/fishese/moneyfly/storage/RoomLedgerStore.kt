@@ -9,6 +9,7 @@ import com.fishese.moneyfly.recognition.*
 import java.time.Instant
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.Dispatchers
 
@@ -92,7 +93,7 @@ class RoomLedgerStore(private val database: LedgerDatabase,
                     require(command.entryId.isNotBlank()) { "An entry ID is required." }
                     val old = dao.entry(command.entryId)?.toEntry()
                     if (old != null) conflict(old) else {
-                        val draft = validate(command.draft)
+                        val draft = validateNew(command.draft)
                         val entry = LedgerEntry(command.entryId, 1, draft, false, now, now, command.operationId)
                         dao.putEntry(entry.toRow()); applied(entry)
                     }
@@ -212,7 +213,7 @@ class RoomLedgerStore(private val database: LedgerDatabase,
                         is LedgerCommand.SetTemplateEnabled -> if (command.enabled) templateDao.latest(command.templateId)?.let { TemplateCodec.decode(it.definition).sourcePackage } else null
                         else -> null
                     }
-                    if (saved.applied && source != null) inboxWriter.applyTemplateToPending(source, now, command.operationId, ::validate)
+                    if (saved.applied && source != null) inboxWriter.applyTemplateToPending(source, now, command.operationId, ::validateNew)
                     saved
                 }
                 is LedgerCommand.ApplyTemplateToPending -> {
@@ -222,18 +223,26 @@ class RoomLedgerStore(private val database: LedgerDatabase,
                         template.revision != command.expectedRevision -> CommandResult(CommandStatus.CONFLICT, template.id, template.revision, message = "This template changed. Review the latest version.")
                         else -> {
                             val definition = TemplateCodec.decode(template.definition)
-                            val report = inboxWriter.applyTemplateToPending(definition.sourcePackage, now, command.operationId, ::validate, definition)
+                            val report = inboxWriter.applyTemplateToPending(definition.sourcePackage, now, command.operationId, ::validateNew, definition)
                             CommandResult(CommandStatus.APPLIED, template.id, template.revision, templateReport = report)
                         }
                     }
                 }
                 is LedgerCommand.PutIgnoreRule, is LedgerCommand.SetIgnoreRuleEnabled, is LedgerCommand.DeleteIgnoreRule -> ignoreRuleWriter.execute(command)
-                else -> inboxWriter.execute(command, now, ::validate)
+                else -> inboxWriter.execute(command, now, ::validateNew)
             }
         } catch (e: IllegalArgumentException) { CommandResult(CommandStatus.INVALID, message = e.message ?: "Check the entered values.") }
         inboxWriter.prune(now)
         dao.putOperation(OperationRow(command.operationId, fingerprint, LedgerCodec.result(result), previous?.let { LedgerCodec.entry(it) }))
         result
+    }
+
+    private suspend fun validateNew(draft: EntryDraft): EntryDraft {
+        if (draft.kind != EntryKind.EXPENSE || draft.categoryId != null || draft.categoryOrigin == CategoryOrigin.EXPLICIT) return validate(draft)
+        val aliases = dao.aliases().first().map { MerchantAlias(it.id, it.spelling, it.canonicalName, it.revision) }
+        val rules = dao.rules().first().map { CategoryRule(it.id, RuleField.valueOf(it.field), LiteralMatch.valueOf(it.match), it.literal, it.categoryId, it.priority, it.sourcePackage, it.accountId, it.revision) }
+        val category = Categorization.suggest(draft, aliases, rules).categoryId
+        return validate(if (category == null) draft else draft.copy(categoryId = category, categoryOrigin = CategoryOrigin.RULE))
     }
 
     private suspend fun validate(draft: EntryDraft): EntryDraft {

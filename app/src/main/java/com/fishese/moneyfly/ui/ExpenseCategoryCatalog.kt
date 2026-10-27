@@ -26,6 +26,7 @@ internal data class ExpenseCategoryOption(val key: String, val label: Int, val e
 
 internal val expenseCategoryCatalog = listOf(
     ExpenseCategoryOption("meals", R.string.category_meals, "Meals", "餐飲", true),
+    ExpenseCategoryOption("snacks", R.string.category_snacks, "Snacks", "零食", true),
     ExpenseCategoryOption("entertainment", R.string.category_entertainment, "Entertainment", "娛樂", true),
     ExpenseCategoryOption("hobby", R.string.category_hobby, "Hobby", "興趣", true),
     ExpenseCategoryOption("transportation", R.string.category_transportation, "Transportation", "交通", true),
@@ -52,8 +53,10 @@ internal const val CATEGORY_STARTER_PREFERENCES = "expense_category_starters_v1"
 /** Labels only. Completed/per-key markers are app preferences, never part of ledger export. */
 internal suspend fun seedExpenseCategories(context: Context, store: LedgerStore): Boolean = categoryCatalogMutex.withLock {
     val preferences = context.getSharedPreferences(CATEGORY_STARTER_PREFERENCES, Context.MODE_PRIVATE)
-    if (preferences.getBoolean("completed", false)) return@withLock true
+    val oldCompleted = preferences.getBoolean("completed", false)
     for (option in expenseCategoryCatalog.filter { it.starter }) {
+        // A completed v1 installation only needs the newly added category.
+        if (oldCompleted && option.key != "snacks") continue
         if (preferences.getBoolean("${option.key}.done", false)) continue
         if (store.categories.first().any { option.matches(it.name) }) {
             if (!preferences.edit().putBoolean("${option.key}.done", true).commit()) return@withLock false
@@ -68,6 +71,24 @@ internal suspend fun seedExpenseCategories(context: Context, store: LedgerStore)
         } catch (_: Exception) { return@withLock false }
         if (!result.applied) return@withLock false
         if (!preferences.edit().putBoolean("${option.key}.done", true).commit()) return@withLock false
+    }
+    preferences.edit().putBoolean("completed", true).commit()
+}
+
+/** Starter rules are installed once; removing or changing one is respected on future launches. */
+internal suspend fun seedTransportRules(context: Context, store: LedgerStore): Boolean = categoryCatalogMutex.withLock {
+    val preferences = context.getSharedPreferences("expense_category_rules_v1", Context.MODE_PRIVATE)
+    if (preferences.getBoolean("completed", false)) return@withLock true
+    val category = store.categories.first().firstOrNull { expenseCategoryCatalog.first { option -> option.key == "transportation" }.matches(it.name) }
+    if (category != null) for ((key, literal) in listOf("minibus" to "Minibus", "mtr" to "MTR Corporation Limited")) {
+        if (preferences.getBoolean("$key.done", false)) continue
+        val existing = store.rules.first().any { it.field == RuleField.MERCHANT && it.match == LiteralMatch.EQUALS && Categorization.normalize(it.literal) == Categorization.normalize(literal) && it.sourcePackage == null && it.accountId == null }
+        if (!existing) {
+            val rule = CategoryRule("starter-transport-$key", RuleField.MERCHANT, LiteralMatch.EQUALS, literal, category.id)
+            val result = try { store.execute(LedgerCommand.PutRule(rule, operationId = "starter-transport-create-$key")) } catch (_: Exception) { return@withLock false }
+            if (!result.applied) return@withLock false
+        }
+        if (!preferences.edit().putBoolean("$key.done", true).commit()) return@withLock false
     }
     preferences.edit().putBoolean("completed", true).commit()
 }

@@ -1,4 +1,5 @@
 <resources>
+    <string name="category_snacks">零食</string>
     <string name="category_meals">餐飲</string>
     <string name="category_entertainment">娛樂</string>
     <string name="category_hobby">興趣</string>

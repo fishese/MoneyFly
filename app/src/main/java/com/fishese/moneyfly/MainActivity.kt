@@ -7,6 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import com.fishese.moneyfly.ui.MoneyFlyApp
 import com.fishese.moneyfly.capture.InboxRetentionWorker
 import com.fishese.moneyfly.ui.seedExpenseCategories
+import com.fishese.moneyfly.ui.seedTransportRules
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -18,7 +19,9 @@ class MainActivity : ComponentActivity() {
         InboxRetentionWorker.schedule(this)
         com.fishese.moneyfly.fx.FxRateWorker.schedule(this)
         val store = (application as MoneyFlyApplication).ledgerStore
-        lifecycleScope.launch(Dispatchers.IO) { seedExpenseCategories(this@MainActivity, store) }
+        lifecycleScope.launch(Dispatchers.IO) {
+            if (seedExpenseCategories(this@MainActivity, store)) seedTransportRules(this@MainActivity, store)
+        }
         setContent { MoneyFlyApp(store, (application as MoneyFlyApplication).captureController, (application as MoneyFlyApplication).fxRepository) }
     }
 

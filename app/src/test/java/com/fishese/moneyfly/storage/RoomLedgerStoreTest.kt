@@ -41,6 +41,18 @@ class RoomLedgerStoreTest {
         assertEquals(CommandStatus.INVALID, store.execute(command.copy(draft = draft.copy(amount = "99"))).status)
         assertEquals("12.34", store.entries.first().single().draft.amount)
     }
+    @Test fun newExpenseUsesRulesButExplicitChoicesConflictsAndOtherDirectionsStaySafe() = runBlocking {
+        store.execute(LedgerCommand.PutCategory("travel", "Travel"))
+        store.execute(LedgerCommand.PutCategory("other", "Other"))
+        store.execute(LedgerCommand.PutRule(CategoryRule("travel-rule", RuleField.MERCHANT, LiteralMatch.EQUALS, "Synthetic Shop", "travel")))
+        val automatic = store.execute(LedgerCommand.Save(draft)).entry!!.draft
+        assertEquals("travel", automatic.categoryId); assertEquals(CategoryOrigin.RULE, automatic.categoryOrigin)
+        assertEquals("other", store.execute(LedgerCommand.Save(draft.copy(categoryId = "other", categoryOrigin = CategoryOrigin.EXPLICIT))).entry!!.draft.categoryId)
+        assertNull(store.execute(LedgerCommand.Save(draft.copy(categoryOrigin = CategoryOrigin.EXPLICIT))).entry!!.draft.categoryId)
+        assertNull(store.execute(LedgerCommand.Save(draft.copy(kind = EntryKind.INCOME))).entry!!.draft.categoryId)
+        store.execute(LedgerCommand.PutRule(CategoryRule("conflict", RuleField.MERCHANT, LiteralMatch.EQUALS, "Synthetic Shop", "other")))
+        assertNull(store.execute(LedgerCommand.Save(draft)).entry!!.draft.categoryId)
+    }
     @Test fun concurrentEditsConflictAndUndoIsConditional() = runBlocking {
         val entry = store.execute(LedgerCommand.Save(draft, "entry", "save")).entry!!
         val commands = listOf(LedgerCommand.Edit(entry.id, 1, draft.copy(notes = "one"), "edit-one"), LedgerCommand.Edit(entry.id, 1, draft.copy(notes = "two"), "edit-two"))

@@ -81,6 +81,17 @@ class TemplateStoreTest {
         assertEquals(3, store.entries.first().size)
     }
 
+    @Test fun automaticallyRecordedTemplateUsesCategoryRule() = runBlocking {
+        enableCapture()
+        store.execute(LedgerCommand.PutCategory("synthetic-category", "Synthetic category"))
+        store.execute(LedgerCommand.PutRule(CategoryRule("synthetic-rule", RuleField.MERCHANT, LiteralMatch.EQUALS, "SYNTHETIC SHOP", "synthetic-category")))
+        store.execute(LedgerCommand.PutTemplate(definition()))
+        assertEquals(InboxStatus.SAVED, capture("categorized-notification").status)
+        val draft = store.entries.first().single().draft
+        assertEquals("synthetic-category", draft.categoryId)
+        assertEquals(CategoryOrigin.RULE, draft.categoryOrigin)
+    }
+
     @Test fun applyExistingRecordsDailyFareButKeepsNearbyRepostForReview() = runBlocking {
         enableCapture(); capture("recurring-backfill")
         now = now.plusSeconds(86400); capture("recurring-backfill")
