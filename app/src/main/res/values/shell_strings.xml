@@ -1,4 +1,7 @@
 <resources>
+    <string name="settings_currency_shortcut">Currency</string>
+    <string name="settings_rules_shortcut">Rules</string>
+    <string name="settings_notifications_shortcut">Notifications</string>
     <string name="shell_add_expense">Add expense</string>
     <string name="shell_review_inbox">Review Inbox</string>
     <string name="shell_organize">Make it yours</string>

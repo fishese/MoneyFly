@@ -7,6 +7,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -217,13 +218,33 @@ private fun Settings(categories: List<Category>, accounts: List<AccountLabel>, a
     var applyingCategories by remember { mutableStateOf(false) }
     var categoryApplyResult by remember { mutableStateOf<Pair<Int, Int>?>(null) }
     val applyScope = rememberCoroutineScope()
+    val settingsListState = rememberLazyListState()
     val headings = listOf(R.string.categories, R.string.accounts, R.string.aliases, R.string.rules)
-    LazyColumn(modifier.fillMaxSize().testTag("settings_list"), contentPadding = PaddingValues(20.dp, 0.dp, 20.dp, 100.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item {
+    val ids = when(section) {
+        0 -> categories.filter { it.name.contains(search, true) }.map { it.id }
+        1 -> accounts.filter { it.name.contains(search, true) }.map { it.id }
+        2 -> aliases.filter { it.spelling.contains(search, true) || it.canonicalName.contains(search, true) }.map { it.id }
+        else -> rules.filter { it.literal.contains(search, true) || categories.find { c -> c.id == it.categoryId }?.name.orEmpty().contains(search, true) }.map { it.id }
+    }
+    LazyColumn(modifier.fillMaxSize().testTag("settings_list"), state = settingsListState, contentPadding = PaddingValues(20.dp, 0.dp, 20.dp, 100.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item(key = "settings_shortcuts") {
+            Column {
+                Text(stringResource(R.string.settings), style = MaterialTheme.typography.headlineMedium)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (fxRepository != null) AssistChip(onClick = { applyScope.launch { settingsListState.animateScrollToItem(1) } }, label = { Text(stringResource(R.string.settings_currency_shortcut)) }, modifier = Modifier.testTag("settings_jump_currency"))
+                    AssistChip(onClick = { section = 0; search = ""; applyScope.launch { settingsListState.animateScrollToItem(2) } }, label = { Text(stringResource(R.string.categories)) }, modifier = Modifier.testTag("settings_jump_categories"))
+                    AssistChip(onClick = { section = 3; search = ""; applyScope.launch { settingsListState.animateScrollToItem(2) } }, label = { Text(stringResource(R.string.settings_rules_shortcut)) }, modifier = Modifier.testTag("settings_jump_rules"))
+                    AssistChip(onClick = { applyScope.launch { settingsListState.animateScrollToItem(3 + maxOf(ids.size, 1)) } }, label = { Text(stringResource(R.string.settings_notifications_shortcut)) }, modifier = Modifier.testTag("settings_jump_notifications"))
+                }
+            }
+        }
+        item(key = "settings_currency") {
             if (fxRepository != null) {
                 FxSettings(fxRepository, fxState, entries)
                 Spacer(Modifier.height(20.dp))
             }
+        }
+        item(key = "settings_organize") {
             Text(stringResource(R.string.shell_organize), style = MaterialTheme.typography.headlineMedium)
             Text(stringResource(R.string.shell_organize_hint), Modifier.padding(vertical = 10.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -246,12 +267,6 @@ private fun Settings(categories: List<Category>, accounts: List<AccountLabel>, a
                 categoryApplyResult?.let { (updated, failed) -> Text(stringResource(R.string.category_apply_result, updated, failed), style = MaterialTheme.typography.bodySmall) }
             }
         }
-        val ids = when(section) {
-            0 -> categories.filter { it.name.contains(search, true) }.map { it.id }
-            1 -> accounts.filter { it.name.contains(search, true) }.map { it.id }
-            2 -> aliases.filter { it.spelling.contains(search, true) || it.canonicalName.contains(search, true) }.map { it.id }
-            else -> rules.filter { it.literal.contains(search, true) || categories.find { c -> c.id == it.categoryId }?.name.orEmpty().contains(search, true) }.map { it.id }
-        }
         items(ids) { id ->
             val title = when(section) { 0 -> categories.first { it.id == id }.name; 1 -> accounts.first { it.id == id }.name; 2 -> aliases.first { it.id == id }.let { "${it.spelling} → ${it.canonicalName}" }; else -> rules.first { it.id == id }.let { "${it.literal} → ${categories.find { c -> c.id == it.categoryId }?.name.orEmpty()} (${it.priority})" } }
             Surface(Modifier.fillMaxWidth().testTag("settings_label_$id").clickable { editId = id }, shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surfaceContainerLow) {
@@ -262,7 +277,7 @@ private fun Settings(categories: List<Category>, accounts: List<AccountLabel>, a
             }
         }
         if (ids.isEmpty()) item { Text(stringResource(if (search.isBlank()) R.string.no_labels else R.string.shell_no_label_matches), Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
-        item {
+        item(key = "settings_notifications") {
             Spacer(Modifier.height(18.dp))
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Text(stringResource(R.string.shell_notifications), Modifier.padding(top = 24.dp), style = MaterialTheme.typography.titleLarge)

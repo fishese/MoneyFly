@@ -81,7 +81,7 @@ internal fun Transactions(
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.transactions), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 if (pendingCount > 0) TextButton(onClick = onPendingInbox) { Text(stringResource(R.string.journal_pending_compact, pendingCount), style = MaterialTheme.typography.labelSmall) }
-                TextButton(modifier = Modifier.testTag("clear_filters"), onClick = { clear() }, contentPadding = PaddingValues(horizontal = 8.dp)) { Text(stringResource(R.string.clear_all), style = MaterialTheme.typography.labelSmall) }
+                TextButton(modifier = Modifier.testTag("clear_filters"), onClick = { clear() }, contentPadding = PaddingValues(horizontal = 8.dp)) { Text(stringResource(R.string.journal_reset_filters), style = MaterialTheme.typography.labelSmall) }
             }
             Row(Modifier.fillMaxWidth().heightIn(min = 40.dp), verticalAlignment = Alignment.CenterVertically) {
                 TextButton(onClick = { earlierMonth?.let(::month) }, enabled = earlierMonth != null, modifier = Modifier.testTag("journal_previous_month").sizeIn(minWidth = 40.dp).semantics { contentDescription = previousMonth }, contentPadding = PaddingValues(4.dp)) { Text("‹", style = MaterialTheme.typography.titleLarge) }
@@ -165,7 +165,7 @@ internal fun Transactions(
             Column(Modifier.fillMaxWidth().padding(vertical = 28.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(stringResource(if (entries.none { !it.deleted }) R.string.journal_empty_title else R.string.no_matches), style = MaterialTheme.typography.titleLarge)
                 Text(stringResource(if (entries.none { !it.deleted }) R.string.journal_empty_body else R.string.journal_no_matches_body), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (entries.any { !it.deleted }) OutlinedButton(onClick = { clear() }) { Text(stringResource(R.string.clear_all)) }
+                if (entries.any { !it.deleted }) OutlinedButton(onClick = { clear() }) { Text(stringResource(R.string.journal_reset_filters_all_time)) }
             }
         }
         groups.forEach { group ->

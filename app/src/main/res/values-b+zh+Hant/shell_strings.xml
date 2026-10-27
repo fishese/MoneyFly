@@ -1,4 +1,7 @@
 <resources>
+    <string name="settings_currency_shortcut">貨幣</string>
+    <string name="settings_rules_shortcut">規則</string>
+    <string name="settings_notifications_shortcut">通知</string>
     <string name="shell_add_expense">新增支出</string>
     <string name="shell_review_inbox">查看收件匣</string>
     <string name="shell_organize">按你的習慣整理</string>

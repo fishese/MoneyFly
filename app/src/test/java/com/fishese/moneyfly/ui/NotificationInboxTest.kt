@@ -295,6 +295,40 @@ class NotificationInboxTest {
         compose.runOnIdle { assertTrue(store.commands.isEmpty()); assertTrue(store.entries.value.isEmpty()) }
     }
 
+    @Test fun pendingViewIncludesUnrecognizedAndReviewButExcludesSavedAndIgnored() {
+        val store = FakeInboxStore()
+        val original = store.inbox.value.single()
+        store.inbox.value = listOf(original, original.copy(id = "review", status = InboxStatus.REVIEW_NEEDED),
+            original.copy(id = "saved", status = InboxStatus.SAVED), original.copy(id = "ignored", status = InboxStatus.IGNORED))
+        compose.setContent { MoneyFlyApp(store, FakeController()) }
+        compose.onNodeWithTag("destination_1", useUnmergedTree = true).performClick()
+        compose.onNodeWithTag("inbox_filter_pending").performClick()
+        compose.onNodeWithTag("inbox_filter_pending").assertIsSelected()
+        compose.onNodeWithTag("inbox_list").performScrollToNode(hasTestTag("receipt_review"))
+        compose.onNodeWithTag("receipt_review").assertExists()
+        compose.onNodeWithTag("receipt_saved").assertDoesNotExist()
+        compose.onNodeWithTag("receipt_ignored").assertDoesNotExist()
+        compose.onNodeWithTag("inbox_list").performScrollToNode(hasTestTag("inbox_filter_pending"))
+        compose.onNodeWithTag("inbox_filter_pending").performClick()
+        compose.onNodeWithTag("inbox_list").performScrollToNode(hasTestTag("receipt_saved"))
+        compose.onNodeWithTag("receipt_saved").assertExists()
+        compose.runOnIdle { assertTrue(store.commands.isEmpty()) }
+    }
+
+    @Test fun clearingInboxSearchKeepsTheSelectedView() {
+        val store = FakeInboxStore()
+        compose.setContent { MoneyFlyApp(store, FakeController()) }
+        compose.onNodeWithTag("destination_1", useUnmergedTree = true).performClick()
+        compose.onNodeWithTag("inbox_filter_pending").performClick()
+        compose.onNodeWithTag("inbox_list").performScrollToNode(hasTestTag("inbox_search"))
+        compose.onNodeWithTag("inbox_search").performTextInput("missing")
+        compose.onNodeWithTag("inbox_clear_search", useUnmergedTree = true).performClick()
+        compose.onNodeWithTag("inbox_list").performScrollToNode(hasTestTag("inbox_filter_pending"))
+        compose.onNodeWithTag("inbox_filter_pending").assertIsSelected()
+        compose.onNodeWithTag("inbox_list").performScrollToNode(hasTestTag("receipt_receipt"))
+        compose.onNodeWithTag("receipt_receipt").assertExists()
+    }
+
     @Test fun moreActionsProvideExplicitIgnoreAlternativeWithoutChangingLedger() {
         val store = FakeInboxStore()
         compose.setContent { MoneyFlyApp(store, FakeController()) }

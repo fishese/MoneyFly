@@ -39,6 +39,20 @@ class SettingsOrganizeTest {
         }
     }
 
+    @Test fun shortcutsReachRulesAndNotificationControls() {
+        val store = LabelStore()
+        store.categories.value = listOf(Category("transport", "Transport", 1))
+        store.rules.value = listOf(CategoryRule("bus", RuleField.MERCHANT, LiteralMatch.EQUALS, "Synthetic bus", "transport"))
+        compose.setContent { MoneyFlyApp(store) }
+        compose.onNodeWithTag("destination_2", useUnmergedTree = true).performClick()
+        compose.onNodeWithTag("settings_jump_rules", useUnmergedTree = true).performClick()
+        compose.onNodeWithTag("apply_category_rules", useUnmergedTree = true).assertExists()
+        compose.onNodeWithTag("settings_list").performScrollToNode(hasTestTag("settings_jump_notifications"))
+        compose.onNodeWithTag("settings_jump_notifications", useUnmergedTree = true).performClick()
+        compose.onNodeWithText("Notification capture", useUnmergedTree = true).assertIsDisplayed()
+        compose.runOnIdle { assertTrue(store.commands.isEmpty()) }
+    }
+
     @Test fun applyRulesToExistingOnlyChangesUncategorizedExpenses() {
         val store = LabelStore()
         val now = Instant.parse("2026-01-01T12:00:00Z")

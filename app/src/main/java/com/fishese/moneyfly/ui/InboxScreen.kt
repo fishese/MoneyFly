@@ -9,6 +9,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
@@ -60,6 +61,7 @@ internal fun InboxScreen(
     }
     val rows = inbox.filter { item ->
         (when (filter) {
+            "pending" -> item.status in setOf(InboxStatus.READY, InboxStatus.REVIEW_NEEDED, InboxStatus.UNRECOGNIZED)
             "ready" -> item.status == InboxStatus.READY
             "unrecognized" -> item.status == InboxStatus.UNRECOGNIZED
             "review" -> item.status == InboxStatus.REVIEW_NEEDED
@@ -75,6 +77,8 @@ internal fun InboxScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(stringResource(R.string.inbox), style = MaterialTheme.typography.headlineMedium)
                     Text(stringResource(R.string.inbox_ui_counts, inbox.count { it.status == InboxStatus.READY }, inbox.count { it.status == InboxStatus.REVIEW_NEEDED }), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    val pendingCount = inbox.count { it.status in setOf(InboxStatus.READY, InboxStatus.REVIEW_NEEDED, InboxStatus.UNRECOGNIZED) }
+                    FilterChip(selected = filter == "pending", onClick = { filter = if (filter == "pending") "all" else "pending" }, label = { Text(stringResource(R.string.inbox_pending_view, pendingCount)) }, modifier = Modifier.testTag("inbox_filter_pending"))
                     Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = MaterialTheme.shapes.large) {
                     Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)) {
                     CompactCaptureBar(settings.consent, connection, store != null && controller != null, controlsExpanded,
@@ -101,7 +105,8 @@ internal fun InboxScreen(
                     }
                     }
                     }
-                    OutlinedTextField(keyword, { keyword = it }, label = { Text(stringResource(R.string.inbox_ui_search)) }, singleLine = true, modifier = Modifier.fillMaxWidth().testTag("inbox_search"), shape = MaterialTheme.shapes.large)
+                    OutlinedTextField(keyword, { keyword = it }, label = { Text(stringResource(R.string.inbox_ui_search)) }, singleLine = true, modifier = Modifier.fillMaxWidth().testTag("inbox_search"), shape = MaterialTheme.shapes.large,
+                        trailingIcon = if (keyword.isNotEmpty()) { { IconButton(onClick = { keyword = "" }, modifier = Modifier.testTag("inbox_clear_search")) { Icon(Icons.Default.Close, stringResource(R.string.journal_clear_search)) } } } else null)
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf("all" to stringResource(R.string.all), "ready" to stringResource(R.string.ready), "review" to stringResource(R.string.review_needed), "unrecognized" to stringResource(R.string.unrecognized), "saved" to stringResource(R.string.saved), "ignored" to stringResource(R.string.ignored)).forEach { (value, label) ->
                             FilterChip(selected = filter == value, onClick = { filter = value }, label = { Text(label) }, modifier = Modifier.heightIn(min = 48.dp).testTag("inbox_filter_$value"))
@@ -117,10 +122,12 @@ internal fun InboxScreen(
                         }
                         if (keyword.isNotEmpty() || filter != "all" || app.isNotEmpty()) TextButton(onClick = { keyword = ""; filter = "all"; app = "" }, modifier = Modifier.heightIn(min = 48.dp).testTag("inbox_clear_filters")) { Text(stringResource(R.string.clear_all)) }
                     }
+                    if (keyword.isNotEmpty() || filter != "all" || app.isNotEmpty()) Text(stringResource(R.string.inbox_showing_count, rows.size), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.testTag("inbox_showing_count"))
                 }
             }
             if (rows.isEmpty()) item {
                 Text(stringResource(when {
+                    filter == "pending" && keyword.isBlank() && app.isEmpty() -> R.string.inbox_pending_empty
                     filter == "ready" -> R.string.ready_empty
                     app.isNotEmpty() && sources.any { it.sourcePackage == app && it.ignored } && filter != "ignored" -> R.string.hidden_source_empty
                     keyword.isNotBlank() || app.isNotEmpty() || filter != "all" -> R.string.inbox_no_matches

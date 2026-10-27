@@ -1,4 +1,7 @@
 <resources>
+    <string name="inbox_pending_view">Needs attention · %1$d</string>
+    <string name="inbox_pending_empty">No retained messages need attention.</string>
+    <string name="inbox_showing_count">Showing %1$d</string>
     <string name="inbox_ui_counts">Ready: %1$d · Review: %2$d</string>
     <string name="inbox_ui_paused">Paused</string>
     <string name="inbox_ui_access">Needs access</string>
