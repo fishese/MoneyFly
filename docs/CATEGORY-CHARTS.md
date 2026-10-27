@@ -40,3 +40,20 @@ Synthetic visual-review artifacts are kept locally and excluded from version con
 
 Build: `artifacts/moneyfly-0.6.0-dev.apk` (version code 7). Physical notification
 lifecycle/battery acceptance and local export remain separate pending work.
+# Automatic categorization
+
+Snacks is included among the default categories, including on existing installations.
+Starting rules map the exact merchant names Minibus and MTR Corporation Limited to
+Transportation. Matching ignores case and repeated whitespace. Rules can be edited
+or deleted under Settings → Category rules and are only installed once.
+
+When editing an expense, a category choice affects only that entry. After choosing
+a category, use “Always categorize this merchant…” to create or update an exact-name
+rule for future expenses. The editor previews a matching rule and allows a one-off
+override. Rules also apply to automatically recorded notification expenses. Rules
+with the same highest priority that disagree leave the expense uncategorized.
+
+Settings → Category rules → Categorize existing expenses applies the current rules
+to uncategorized expenses after confirmation. It skips existing categories, income,
+and conflicting rules. Each entry update checks its revision, so an entry changed
+concurrently is skipped and counted as a failure. Financial amounts are untouched.

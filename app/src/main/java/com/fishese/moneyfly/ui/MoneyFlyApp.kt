@@ -43,7 +43,9 @@ import java.time.*
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.first
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -211,6 +213,10 @@ private fun Settings(categories: List<Category>, accounts: List<AccountLabel>, a
     var section by rememberSaveable { mutableIntStateOf(0) }
     var editId by rememberSaveable { mutableStateOf<String?>(null) }
     var search by rememberSaveable { mutableStateOf("") }
+    var confirmApplyCategories by remember { mutableStateOf(false) }
+    var applyingCategories by remember { mutableStateOf(false) }
+    var categoryApplyResult by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+    val applyScope = rememberCoroutineScope()
     val headings = listOf(R.string.categories, R.string.accounts, R.string.aliases, R.string.rules)
     LazyColumn(modifier.fillMaxSize().testTag("settings_list"), contentPadding = PaddingValues(20.dp, 0.dp, 20.dp, 100.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
@@ -234,7 +240,11 @@ private fun Settings(categories: List<Category>, accounts: List<AccountLabel>, a
                 Spacer(Modifier.height(16.dp))
                 ExpenseCategorySuggestions(categories, store, customCategory = { editId = "new" })
             }
-            if (section == 3) Text(stringResource(R.string.rule_hint), style = MaterialTheme.typography.bodySmall)
+            if (section == 3) {
+                Text(stringResource(R.string.rule_hint), style = MaterialTheme.typography.bodySmall)
+                OutlinedButton(onClick = { confirmApplyCategories = true }, enabled = !applyingCategories && rules.isNotEmpty(), modifier = Modifier.fillMaxWidth().testTag("apply_category_rules")) { Text(stringResource(if (applyingCategories) R.string.category_apply_running else R.string.category_apply_existing)) }
+                categoryApplyResult?.let { (updated, failed) -> Text(stringResource(R.string.category_apply_result, updated, failed), style = MaterialTheme.typography.bodySmall) }
+            }
         }
         val ids = when(section) {
             0 -> categories.filter { it.name.contains(search, true) }.map { it.id }
@@ -263,6 +273,27 @@ private fun Settings(categories: List<Category>, accounts: List<AccountLabel>, a
             Text(stringResource(R.string.local_journal), Modifier.padding(vertical = 20.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
+    if (confirmApplyCategories) AlertDialog(onDismissRequest = { confirmApplyCategories = false }, title = { Text(stringResource(R.string.category_apply_existing)) }, text = { Text(stringResource(R.string.category_apply_confirm)) },
+        confirmButton = { TextButton(onClick = {
+            confirmApplyCategories = false; applyingCategories = true; categoryApplyResult = null
+            applyScope.launch {
+                var updated = 0; var failed = 0
+                try {
+                    val currentRules = store.rules.first()
+                    val currentAliases = store.aliases.first()
+                    val candidates = store.entries.first().filter { !it.deleted && it.draft.kind == EntryKind.EXPENSE && it.draft.categoryId == null }
+                    for (entry in candidates) {
+                        val target = Categorization.suggest(entry.draft, currentAliases, currentRules).categoryId ?: continue
+                        try {
+                            val result = store.execute(LedgerCommand.Edit(entry.id, entry.revision, entry.draft.copy(categoryId = target, categoryOrigin = CategoryOrigin.RULE)))
+                            if (result.applied) updated++ else failed++
+                        } catch (cancelled: CancellationException) { throw cancelled } catch (_: Exception) { failed++ }
+                    }
+                } catch (cancelled: CancellationException) { throw cancelled } catch (_: Exception) { failed++ }
+                categoryApplyResult = updated to failed; applyingCategories = false
+            }
+        }, modifier = Modifier.testTag("confirm_apply_category_rules")) { Text(stringResource(R.string.category_apply_existing)) } },
+        dismissButton = { TextButton(onClick = { confirmApplyCategories = false }) { Text(stringResource(R.string.cancel)) } })
     editId?.let { id ->
         val c = categories.find { it.id == id }; val a = accounts.find { it.id == id }; val alias = aliases.find { it.id == id }; val rule = rules.find { it.id == id }
         var name by remember(id, section) { mutableStateOf(c?.name ?: a?.name ?: alias?.spelling ?: rule?.literal.orEmpty()) }

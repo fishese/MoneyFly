@@ -70,6 +70,7 @@ internal fun EntryEditor(id: String, expectedRevision: Long, original: LedgerEnt
         var moreKinds by rememberSaveable { mutableStateOf(initial.kind in setOf(EntryKind.TRANSFER, EntryKind.REFUND)) }
         var moreDate by rememberSaveable { mutableStateOf(false) }
         var categoryPicker by remember { mutableStateOf(false) }
+        var createCategoryRule by remember { mutableStateOf(false) }
         var accountPicker by remember { mutableStateOf(false) }
         var notificationExpanded by remember { mutableStateOf(false) }
         var date by rememberSaveable { mutableStateOf(initial.occurredAt.atZone(zone).toLocalDate().toString()) }
@@ -110,6 +111,8 @@ internal fun EntryEditor(id: String, expectedRevision: Long, original: LedgerEnt
         val missingCategory = category.isNotEmpty() && categories.none { it.id == category }
         val missingAccount = account.isNotEmpty() && accounts.none { it.id == account }
         val suggestion = Categorization.suggest(initial.copy(merchant = merchant, canonicalMerchant = canonicalMerchant, notes = notes, accountId = account.ifEmpty { null }, categoryId = category.ifEmpty { null }, categoryOrigin = if (category.isEmpty()) CategoryOrigin.UNASSIGNED else CategoryOrigin.EXPLICIT), aliases, rules)
+        val automaticCategory = suggestion.categoryId.takeIf { original == null && kind == EntryKind.EXPENSE.name && !categoryTouched && category.isEmpty() }
+        val displayedCategory = category.ifEmpty { automaticCategory.orEmpty() }
         androidx.compose.ui.window.Dialog(onDismissRequest = { if (!busy) close() }, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
             DialogSystemBars()
             Surface(Modifier.fillMaxSize()) {
@@ -130,7 +133,7 @@ internal fun EntryEditor(id: String, expectedRevision: Long, original: LedgerEnt
                             if (missingCategory || missingAccount) Text(stringResource(R.string.editor_missing_label_save), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(bottom = 8.dp).testTag("entry_label_error"))
                             Button(enabled = !busy && normalized != null && instant != null && !missingCategory && !missingAccount && validRate, modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp).testTag("save_entry"), onClick = {
                                 if (normalized == null || instant == null || missingCategory || missingAccount || !validRate) { error = invalid; return@Button }
-                                val draft = initial.copy(amount = normalized, currency = currency, kind = EntryKind.valueOf(kind), merchant = merchant, canonicalMerchant = canonicalMerchant, notes = notes, categoryId = category.ifEmpty { null }, accountId = account.ifEmpty { null }, occurredAt = instant, timeOrigin = timeResolution.origin!!, timePrecision = timeResolution.precision!!, categoryOrigin = if (category.isEmpty()) CategoryOrigin.UNASSIGNED else CategoryOrigin.EXPLICIT, exchangeRate = if (customRate) entryRate else null, exchangeRateCurrency = if (customRate) rateCurrency else null)
+                                val draft = initial.copy(amount = normalized, currency = currency, kind = EntryKind.valueOf(kind), merchant = merchant, canonicalMerchant = canonicalMerchant, notes = notes, categoryId = category.ifEmpty { null }, accountId = account.ifEmpty { null }, occurredAt = instant, timeOrigin = timeResolution.origin!!, timePrecision = timeResolution.precision!!, categoryOrigin = if (categoryTouched) CategoryOrigin.EXPLICIT else if (category.isEmpty()) CategoryOrigin.UNASSIGNED else initial.categoryOrigin, exchangeRate = if (customRate) entryRate else null, exchangeRateCurrency = if (customRate) rateCurrency else null)
                                 val command: LedgerCommand = when {
                                     originalReceipt != null -> LedgerCommand.SaveCaptured(originalReceipt.id, receiptRevision, draft, if (separatePurchase) SaveDecision.SEPARATE_PURCHASE else SaveDecision.NORMAL, entryId, operationId)
                                     id == "new" -> LedgerCommand.Save(draft, entryId, operationId)
@@ -195,13 +198,17 @@ internal fun EntryEditor(id: String, expectedRevision: Long, original: LedgerEnt
                                 TextButton(onClick = { category = ""; categoryTouched = true }, enabled = editable, modifier = Modifier.testTag("clear_missing_category")) { Text(stringResource(R.string.editor_clear_category)) }
                             }
                             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                FilterChip(category.isEmpty(), { category = ""; categoryTouched = true }, enabled = editable, label = { Text(stringResource(R.string.uncategorized)) }, modifier = Modifier.testTag("category_none"))
-                                val shown = (listOfNotNull(categories.find { it.id == category }) + recentCategories).distinctBy { it.id }
-                                shown.forEach { label -> FilterChip(category == label.id, { category = label.id; categoryTouched = true }, enabled = editable, label = { Text(label.name) }, modifier = Modifier.testTag("quick_category_${label.id}")) }
-                                OutlinedButton(onClick = { categoryPicker = true }, enabled = editable, modifier = Modifier.testTag("choose_category")) { Text(stringResource(R.string.editor_all_categories)) }
+                                FilterChip(displayedCategory.isEmpty(), { category = ""; categoryTouched = true }, enabled = editable, label = { Text(stringResource(R.string.uncategorized)) }, modifier = Modifier.testTag("category_none"))
+                                val shown = (listOfNotNull(categories.find { it.id == displayedCategory }) + recentCategories).distinctBy { it.id }
+                                shown.forEach { label -> FilterChip(displayedCategory == label.id, { category = label.id; categoryTouched = true }, enabled = editable, label = { Text(label.name) }, modifier = Modifier.testTag("quick_category_${label.id}")) }
                             }
-                            if (suggestion.needsChoice) Text(stringResource(R.string.rule_conflict, suggestion.conflictingCategoryIds.mapNotNull { candidate -> categories.find { it.id == candidate }?.name }.joinToString(", ")), color = MaterialTheme.colorScheme.error)
-                            else if (!categoryTouched && category.isEmpty() && suggestion.categoryId != null) TextButton(onClick = { category = suggestion.categoryId; categoryTouched = true }, enabled = editable, modifier = Modifier.testTag("apply_rule_category")) { Text(stringResource(R.string.use_suggestion, categories.find { it.id == suggestion.categoryId }?.name.orEmpty())) }
+                            OutlinedButton(onClick = { categoryPicker = true }, enabled = editable, modifier = Modifier.testTag("choose_category")) { Text(stringResource(R.string.editor_all_categories)) }
+                            if (!categoryTouched && suggestion.needsChoice) Text(stringResource(R.string.rule_conflict, suggestion.conflictingCategoryIds.mapNotNull { candidate -> categories.find { it.id == candidate }?.name }.joinToString(", ")), color = MaterialTheme.colorScheme.error)
+                            else if (!categoryTouched && category.isEmpty() && suggestion.categoryId != null) {
+                                if (original == null && kind == EntryKind.EXPENSE.name) Text(stringResource(R.string.category_rule_auto_preview, categories.find { it.id == suggestion.categoryId }?.name.orEmpty()), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                                else TextButton(onClick = { category = suggestion.categoryId; categoryTouched = true }, enabled = editable, modifier = Modifier.testTag("apply_rule_category")) { Text(stringResource(R.string.use_suggestion, categories.find { it.id == suggestion.categoryId }?.name.orEmpty())) }
+                            }
+                            if (kind == EntryKind.EXPENSE.name && merchant.isNotBlank() && category.isNotEmpty() && !missingCategory) TextButton(onClick = { createCategoryRule = true }, enabled = editable, modifier = Modifier.testTag("create_merchant_rule")) { Text(stringResource(R.string.category_rule_from_entry)) }
                             if (!categoryTouched && previousCategory != null && !suggestion.needsChoice && suggestion.categoryId == null) SuggestionChip(onClick = { category = previousCategory.id; categoryTouched = true }, enabled = editable, label = { Text(stringResource(R.string.editor_previous_category, previousCategory.name)) }, modifier = Modifier.testTag("apply_recent_category"))
                         }
                         if (currency != reportingCurrency || customRate) {
@@ -231,6 +238,7 @@ internal fun EntryEditor(id: String, expectedRevision: Long, original: LedgerEnt
                 }
                 if (categoryPicker) EditorLabelPicker(stringResource(R.string.category), categories.map { it.id to it.name }, stringResource(R.string.uncategorized), category, dismiss = { categoryPicker = false }, categoryStore = store) { category = it; categoryTouched = true; categoryPicker = false }
                 if (accountPicker) EditorLabelPicker(stringResource(R.string.account), accounts.map { it.id to it.name }, stringResource(R.string.unassigned), account, dismiss = { accountPicker = false }) { account = it; accountTouched = true; accountPicker = false }
+                if (createCategoryRule) MerchantRuleDialog(store, rules, canonicalMerchant ?: merchant, category, categories.find { it.id == category }?.name.orEmpty()) { createCategoryRule = false }
             }
         }
         if (confirmDelete) AlertDialog(onDismissRequest = { confirmDelete = false }, title = { Text(stringResource(R.string.delete_entry)) }, text = { Text(stringResource(R.string.delete_hint)) }, confirmButton = { TextButton(onClick = { confirmDelete = false; delete() }) { Text(stringResource(R.string.delete)) } }, dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text(stringResource(R.string.cancel)) } })

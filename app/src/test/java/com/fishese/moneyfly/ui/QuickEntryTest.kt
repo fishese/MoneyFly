@@ -75,6 +75,39 @@ class QuickEntryTest {
         compose.onNodeWithTag("entry_amount").assertIsFocused()
     }
 
+    @Test fun automaticCategoryIsVisibleAndCanBeOverriddenForOneEntry() {
+        val store = FakeStore()
+        editor(store, listOf(history()), listOf(CategoryRule("rule", RuleField.MERCHANT, LiteralMatch.EQUALS, "Cafe", "food")))
+        compose.onNodeWithTag("entry_amount").performTextInput("12")
+        scrollAndClick("recent_merchant_cafe")
+        compose.onNodeWithTag("quick_category_food", useUnmergedTree = true).assertIsSelected()
+        compose.onNodeWithTag("category_none", useUnmergedTree = true).assertIsNotSelected()
+        scrollAndClick("category_none")
+        compose.onNodeWithTag("category_none", useUnmergedTree = true).assertIsSelected()
+        compose.onNodeWithTag("save_entry", useUnmergedTree = true).performClick()
+        compose.waitUntil { store.commands.any { it is LedgerCommand.Save } }
+        val draft = (store.commands.last() as LedgerCommand.Save).draft
+        assertNull(draft.categoryId)
+        assertEquals(CategoryOrigin.EXPLICIT, draft.categoryOrigin)
+        assertTrue(store.commands.none { it is LedgerCommand.PutRule })
+    }
+
+    @Test fun categorySelectionDoesNotCreateRuleUntilExplicitlyRequested() {
+        val store = FakeStore()
+        editor(store, listOf(history()))
+        compose.onNodeWithTag("entry_amount").performTextInput("12")
+        scrollAndClick("recent_merchant_cafe")
+        scrollAndClick("apply_recent_category")
+        assertTrue(store.commands.none { it is LedgerCommand.PutRule })
+        scrollAndClick("create_merchant_rule")
+        compose.onNodeWithTag("confirm_merchant_rule", useUnmergedTree = true).performClick()
+        compose.waitUntil { store.commands.any { it is LedgerCommand.PutRule } }
+        val rule = store.commands.filterIsInstance<LedgerCommand.PutRule>().single().rule
+        assertEquals("Cafe", rule.literal)
+        assertEquals("food", rule.categoryId)
+        assertEquals(LiteralMatch.EQUALS, rule.match)
+    }
+
     @Test fun searchedExplicitCategoryAndAccountWinOverHistoryAndAliasRule() {
         val store = FakeStore()
         editor(store, listOf(history()), listOf(CategoryRule("rule", RuleField.MERCHANT, LiteralMatch.EQUALS, "Cafe", "food", priority = 99)))
