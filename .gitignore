@@ -10,6 +10,7 @@ signing.properties
 *.iml
 .tools/
 .local-signing/
+.local-defaults/
 dependency-report.txt
 artifacts/*.apk
 artifacts/ui-review/

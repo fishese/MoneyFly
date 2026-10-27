@@ -49,7 +49,7 @@ or deleted under Settings → Category rules and are only installed once.
 
 When editing an expense, a category choice affects only that entry. After choosing
 a category, use “Always categorize this merchant…” to create or update an exact-name
-rule for future expenses. The editor previews a matching rule and allows a one-off
+rule for future expenses and matching existing uncategorized expenses. The editor previews a matching rule and allows a one-off
 override. Rules also apply to automatically recorded notification expenses. Rules
 with the same highest priority that disagree leave the expense uncategorized.
 

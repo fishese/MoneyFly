@@ -204,7 +204,19 @@ class RoomLedgerStore(private val database: LedgerDatabase,
                         require(dao.category(rule.categoryId) != null) { "Choose an existing category." }
                         require(rule.accountId == null || dao.account(rule.accountId) != null) { "Choose an existing account label." }
                         val row = RuleRow(validId(rule.id), rule.field.name, rule.match.name, validLabel(rule.literal), rule.categoryId, rule.priority, rule.sourcePackage, rule.accountId, (old?.revision ?: 0) + 1)
-                        dao.putRule(row); applied(row.id, row.revision)
+                        dao.putRule(row)
+                        val aliases = dao.aliases().first().map { MerchantAlias(it.id, it.spelling, it.canonicalName, it.revision) }
+                        val allRules = dao.rules().first().map { CategoryRule(it.id, RuleField.valueOf(it.field), LiteralMatch.valueOf(it.match), it.literal, it.categoryId, it.priority, it.sourcePackage, it.accountId, it.revision) }
+                        val savedRule = CategoryRule(row.id, RuleField.valueOf(row.field), LiteralMatch.valueOf(row.match), row.literal, row.categoryId, row.priority, row.sourcePackage, row.accountId, row.revision)
+                        for (entryRow in dao.entries().first()) {
+                            val entry = entryRow.toEntry()
+                            if (entry.draft.kind != EntryKind.EXPENSE || entry.draft.categoryId != null) continue
+                            if (Categorization.suggest(entry.draft, aliases, listOf(savedRule)).categoryId != savedRule.categoryId) continue
+                            if (Categorization.suggest(entry.draft, aliases, allRules).categoryId != savedRule.categoryId) continue
+                            val updated = entry.copy(revision = entry.revision + 1, draft = entry.draft.copy(categoryId = row.categoryId, categoryOrigin = CategoryOrigin.RULE), updatedAt = now, lastOperationId = command.operationId)
+                            dao.putEntry(updated.toRow())
+                        }
+                        applied(row.id, row.revision)
                     }
                 }
                 is LedgerCommand.DeleteRule -> {

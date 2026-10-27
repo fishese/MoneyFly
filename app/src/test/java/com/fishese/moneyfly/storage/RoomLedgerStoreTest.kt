@@ -82,6 +82,35 @@ class RoomLedgerStoreTest {
         store.execute(LedgerCommand.PutAccountRule(AccountRule("r2", "synthetic shop", null, "two")))
         assertNull(store.execute(LedgerCommand.Save(draft)).entry!!.draft.accountId)
     }
+    @Test fun savingCategoryRuleClassifiesOnlyMatchingUncategorizedExpensesAndReplaysSafely() = runBlocking {
+        store.execute(LedgerCommand.PutCategory("travel", "Travel"))
+        store.execute(LedgerCommand.PutCategory("other", "Other"))
+        store.execute(LedgerCommand.Save(draft, "matching"))
+        store.execute(LedgerCommand.Save(draft.copy(merchant = "Different"), "unmatched"))
+        store.execute(LedgerCommand.Save(draft.copy(categoryId = "other", categoryOrigin = CategoryOrigin.EXPLICIT), "chosen"))
+        store.execute(LedgerCommand.Save(draft.copy(kind = EntryKind.INCOME), "income"))
+        val rule = CategoryRule("travel-rule", RuleField.MERCHANT, LiteralMatch.EQUALS, "Synthetic Shop", "travel")
+        val command = LedgerCommand.PutRule(rule, operationId = "synthetic-backfill-rule")
+        assertTrue(store.execute(command).applied)
+        val entries = store.entries.first().associateBy { it.id }
+        assertEquals("travel", entries.getValue("matching").draft.categoryId)
+        assertEquals(CategoryOrigin.RULE, entries.getValue("matching").draft.categoryOrigin)
+        assertEquals(2L, entries.getValue("matching").revision)
+        assertNull(entries.getValue("unmatched").draft.categoryId)
+        assertEquals("other", entries.getValue("chosen").draft.categoryId)
+        assertNull(entries.getValue("income").draft.categoryId)
+        assertTrue(store.execute(command).replayed)
+        assertEquals(2L, store.entries.first().single { it.id == "matching" }.revision)
+    }
+
+    @Test fun savingConflictingCategoryRuleDoesNotBackfillAmbiguousEntries() = runBlocking {
+        store.execute(LedgerCommand.PutCategory("first", "First"))
+        store.execute(LedgerCommand.PutCategory("second", "Second"))
+        store.execute(LedgerCommand.PutRule(CategoryRule("first-rule", RuleField.MERCHANT, LiteralMatch.EQUALS, "Synthetic Shop", "first")))
+        store.execute(LedgerCommand.Save(draft.copy(categoryOrigin = CategoryOrigin.EXPLICIT), "intentional"))
+        store.execute(LedgerCommand.PutRule(CategoryRule("second-rule", RuleField.MERCHANT, LiteralMatch.EQUALS, "Synthetic Shop", "second")))
+        assertNull(store.entries.first().single().draft.categoryId)
+    }
     @Test fun concurrentEditsConflictAndUndoIsConditional() = runBlocking {
         val entry = store.execute(LedgerCommand.Save(draft, "entry", "save")).entry!!
         val commands = listOf(LedgerCommand.Edit(entry.id, 1, draft.copy(notes = "one"), "edit-one"), LedgerCommand.Edit(entry.id, 1, draft.copy(notes = "two"), "edit-two"))
