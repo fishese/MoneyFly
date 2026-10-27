@@ -44,6 +44,7 @@ class TransactionBulkActionsTest {
         val store = Store()
         compose.setContent { MoneyFlyApp(store) }
         compose.onNodeWithTag("transactions_list").performScrollToNode(hasTestTag("transaction_swipe_one"))
+        compose.onNode(hasText("Account") and hasAnyAncestor(hasTestTag("transaction_swipe_one")), useUnmergedTree = true).assertDoesNotExist()
         compose.onNodeWithTag("transaction_swipe_one", useUnmergedTree = true).performTouchInput { swipeLeft() }
         compose.waitForIdle()
         compose.runOnIdle { assertTrue(store.commands.isEmpty()) }
@@ -51,6 +52,17 @@ class TransactionBulkActionsTest {
         compose.onNodeWithTag("editor_label_travel", useUnmergedTree = true).performClick()
         compose.waitUntil { store.commands.any { it is LedgerCommand.Edit } }
         compose.runOnIdle { assertEquals("travel", store.commands.filterIsInstance<LedgerCommand.Edit>().single().draft.categoryId) }
+    }
+
+    @Test fun transactionRowShowsAccountIconButNotAccountName() {
+        val store = Store()
+        store.accounts.value = listOf(AccountLabel("card", "Synthetic Card", AccountKind.CARD, 1, "匯"))
+        store.entries.value = store.entries.value.map { if (it.id == "one") it.copy(draft = it.draft.copy(accountId = "card")) else it }
+        compose.setContent { MoneyFlyApp(store) }
+        compose.onNodeWithTag("transactions_list").performScrollToNode(hasTestTag("transaction_one"))
+        compose.onNode(hasText("匯") and hasAnyAncestor(hasTestTag("transaction_one")), useUnmergedTree = true).assertExists()
+        compose.onNode(hasText("Synthetic Card", substring = true) and hasAnyAncestor(hasTestTag("transaction_one")), useUnmergedTree = true).assertDoesNotExist()
+        compose.onNode(hasText("Unassigned", substring = true) and hasAnyAncestor(hasTestTag("transaction_one")), useUnmergedTree = true).assertDoesNotExist()
     }
 
     @Test fun swipeRightCanCreateAccountRuleWithoutChangingTheEntry() {

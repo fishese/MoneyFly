@@ -12,6 +12,11 @@ disagree, the entry remains unassigned. Account assignment happens before catego
 rules are evaluated, so an account-scoped category rule can also match. Choosing
 Unassigned in the editor suppresses account rules for that save.
 
+An account can have an optional short Unicode icon or emoji. Edit it in Settings →
+Account labels. The transaction list shows the icon when one is set, while account
+names remain available in the editor, search, filters and account grouping. Existing
+accounts keep no icon until one is chosen.
+
 Select in Transactions enables checkboxes. Select all results includes every entry
 matching the current filters, including collapsed groups; selected entries remain
 selected if filters change. Category and account assignments affect only selected

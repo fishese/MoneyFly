@@ -31,8 +31,11 @@ internal fun journalAdjacentMonth(value: YearMonth, offset: Long): YearMonth? = 
 }.getOrNull()
 
 /** Literal AND search across saved entry fields; no notification content or pattern syntax. */
-internal fun matchesJournalSearch(entry: LedgerEntry, query: String, categories: List<Category>, accounts: List<AccountLabel>): Boolean {
-    val terms = query.trim().lowercase(Locale.ROOT).split(Regex("[\\s\\p{Z}]+")).filter { it.isNotEmpty() }
+private val journalSearchWhitespace = Regex("[\\s\\p{Z}]+")
+internal fun journalSearchTerms(query: String): List<String> = query.trim().lowercase(Locale.ROOT).split(journalSearchWhitespace).filter { it.isNotEmpty() }
+internal fun matchesJournalSearch(entry: LedgerEntry, query: String, categories: List<Category>, accounts: List<AccountLabel>): Boolean =
+    matchesJournalSearch(entry, journalSearchTerms(query), categories, accounts)
+internal fun matchesJournalSearch(entry: LedgerEntry, terms: List<String>, categories: List<Category>, accounts: List<AccountLabel>): Boolean {
     if (terms.isEmpty()) return true
     val draft = entry.draft
     val fields = listOf(draft.merchant, draft.canonicalMerchant.orEmpty(), draft.notes, draft.amount, draft.currency,

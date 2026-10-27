@@ -239,7 +239,7 @@ internal fun EntryEditor(id: String, expectedRevision: Long, original: LedgerEnt
                     }
                 }
                 if (categoryPicker) EditorLabelPicker(stringResource(R.string.category), categories.map { it.id to it.name }, stringResource(R.string.uncategorized), category, dismiss = { categoryPicker = false }, categoryStore = store) { category = it; categoryTouched = true; categoryPicker = false }
-                if (accountPicker) EditorLabelPicker(stringResource(R.string.account), accounts.map { it.id to it.name }, stringResource(R.string.unassigned), account.ifEmpty { autoAccount.orEmpty() }, dismiss = { accountPicker = false }) { account = it; accountTouched = true; accountPicker = false }
+                if (accountPicker) EditorLabelPicker(stringResource(R.string.account), accounts.map { it.id to listOfNotNull(it.icon, it.name).joinToString(" ") }, stringResource(R.string.unassigned), account.ifEmpty { autoAccount.orEmpty() }, dismiss = { accountPicker = false }) { account = it; accountTouched = true; accountPicker = false }
                 if (createCategoryRule) MerchantRuleDialog(store, rules, canonicalMerchant ?: merchant, category, categories.find { it.id == category }?.name.orEmpty()) { createCategoryRule = false }
             }
         }

@@ -1,4 +1,7 @@
 <resources>
+    <string name="account_icon_label">Account icon (optional)</string>
+    <string name="account_icon_hint">Enter an emoji or short character, such as 🚌, 匯 or D.</string>
+    <string name="account_icon_description">Account: %1$s</string>
     <string name="source_captured">Captured</string>
     <string name="source_capture_toggle">Capture notifications</string>
     <string name="source_filter_empty">No apps in this view.</string>

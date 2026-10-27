@@ -53,6 +53,21 @@ class SettingsOrganizeTest {
         compose.runOnIdle { assertTrue(store.commands.isEmpty()) }
     }
 
+    @Test fun accountIconCanBeEditedAsAUnicodeCharacter() {
+        val store = LabelStore()
+        store.accounts.value = listOf(AccountLabel("card", "Synthetic card", AccountKind.CARD, 1))
+        compose.setContent { MoneyFlyApp(store) }
+        compose.onNodeWithTag("destination_2", useUnmergedTree = true).performClick()
+        compose.onNodeWithTag("settings_list").performScrollToNode(hasText("Account labels"))
+        compose.onNodeWithText("Account labels", useUnmergedTree = true).performClick()
+        compose.onNodeWithTag("settings_list").performScrollToNode(hasTestTag("settings_label_card"))
+        compose.onNodeWithTag("settings_label_card").performClick()
+        compose.onNodeWithTag("account_icon_input", useUnmergedTree = true).performTextInput("匯")
+        compose.onNode(hasText("Save") and hasAnyAncestor(isDialog()), useUnmergedTree = true).performClick()
+        compose.waitUntil { store.commands.any { it is LedgerCommand.PutAccount } }
+        compose.runOnIdle { assertEquals("匯", store.commands.filterIsInstance<LedgerCommand.PutAccount>().single().icon) }
+    }
+
     @Test fun applyRulesToExistingOnlyChangesUncategorizedExpenses() {
         val store = LabelStore()
         val now = Instant.parse("2026-01-01T12:00:00Z")
@@ -96,6 +111,12 @@ class SettingsOrganizeTest {
                 is LedgerCommand.DeleteCategory -> {
                     categories.value = categories.value.filterNot { it.id == command.id }
                     CommandResult(CommandStatus.APPLIED, command.id, 2)
+                }
+                is LedgerCommand.PutAccount -> {
+                    val current = accounts.value.find { it.id == command.id }
+                    val updated = AccountLabel(command.id, command.name, command.kind, (current?.revision ?: 0) + 1, command.icon)
+                    accounts.value = accounts.value.filterNot { it.id == command.id } + updated
+                    CommandResult(CommandStatus.APPLIED, updated.id, updated.revision)
                 }
                 is LedgerCommand.Edit -> {
                     val current = entries.value.first { it.id == command.entryId }

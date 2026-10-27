@@ -31,10 +31,12 @@ internal fun TransactionSwipe(entry: LedgerEntry, selecting: Boolean, onAction: 
             }
         }
         SwipeToDismissBox(state, modifier = Modifier.testTag("transaction_swipe_${entry.id}"), backgroundContent = {
-            val category = state.dismissDirection == SwipeToDismissBoxValue.EndToStart
-            Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.secondaryContainer) {
-                Box(Modifier.padding(horizontal = 16.dp), contentAlignment = if (category) Alignment.CenterEnd else Alignment.CenterStart) {
-                    Text(stringResource(if (category) R.string.category else R.string.account), fontWeight = FontWeight.SemiBold)
+            if (state.dismissDirection != SwipeToDismissBoxValue.Settled) {
+                val category = state.dismissDirection == SwipeToDismissBoxValue.EndToStart
+                Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.secondaryContainer) {
+                    Box(Modifier.padding(horizontal = 16.dp), contentAlignment = if (category) Alignment.CenterEnd else Alignment.CenterStart) {
+                        Text(stringResource(if (category) R.string.category else R.string.account), fontWeight = FontWeight.SemiBold)
+                    }
                 }
             }
         }) { content() }

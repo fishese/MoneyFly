@@ -1,4 +1,7 @@
 <resources>
+    <string name="account_icon_label">帳戶圖示（可選）</string>
+    <string name="account_icon_hint">輸入表情符號或簡短字元，例如 🚌、匯或 D。</string>
+    <string name="account_icon_description">帳戶：%1$s</string>
     <string name="source_captured">擷取中</string>
     <string name="source_capture_toggle">擷取通知</string>
     <string name="source_filter_empty">此檢視沒有應用程式。</string>

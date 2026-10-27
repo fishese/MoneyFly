@@ -239,7 +239,7 @@ fun MoneyFlyApp(store: LedgerStore, captureController: CaptureController? = null
         pickerMode?.let { mode ->
             val categoryPicker = mode.endsWith("category")
             EditorLabelPicker(stringResource(if (categoryPicker) R.string.category else R.string.account),
-                if (categoryPicker) categories.map { it.id to it.name } else accounts.map { it.id to it.name },
+                if (categoryPicker) categories.map { it.id to it.name } else accounts.map { it.id to listOfNotNull(it.icon, it.name).joinToString(" ") },
                 stringResource(if (categoryPicker) R.string.uncategorized else R.string.unassigned),
                 if (mode.startsWith("single") || mode.startsWith("rule")) (if (categoryPicker) actionEntry?.draft?.categoryId else actionEntry?.draft?.accountId).orEmpty() else "",
                 dismiss = { pickerMode = null; swipeEntry = null }, categoryStore = if (categoryPicker) store else null) { chosen ->
@@ -347,7 +347,7 @@ private fun Settings(categories: List<Category>, accounts: List<AccountLabel>, a
             }
         }
         items(ids) { id ->
-            val title = when(section) { 0 -> categories.first { it.id == id }.name; 1 -> accounts.first { it.id == id }.name; 2 -> aliases.first { it.id == id }.let { "${it.spelling} → ${it.canonicalName}" }; else -> rules.first { it.id == id }.let { "${it.literal} → ${categories.find { c -> c.id == it.categoryId }?.name.orEmpty()} (${it.priority})" } }
+            val title = when(section) { 0 -> categories.first { it.id == id }.name; 1 -> accounts.first { it.id == id }.let { listOfNotNull(it.icon, it.name).joinToString(" ") }; 2 -> aliases.first { it.id == id }.let { "${it.spelling} → ${it.canonicalName}" }; else -> rules.first { it.id == id }.let { "${it.literal} → ${categories.find { c -> c.id == it.categoryId }?.name.orEmpty()} (${it.priority})" } }
             Surface(Modifier.fillMaxWidth().testTag("settings_label_$id").clickable { editId = id }, shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surfaceContainerLow) {
                 Row(Modifier.padding(16.dp).heightIn(min = 32.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
@@ -399,11 +399,15 @@ private fun Settings(categories: List<Category>, accounts: List<AccountLabel>, a
         var match by remember(id, section) { mutableStateOf((rule?.match ?: LiteralMatch.EQUALS).name) }
         var source by remember(id, section) { mutableStateOf(rule?.sourcePackage.orEmpty()) }
         var accountKind by remember(id, section) { mutableStateOf((a?.kind ?: AccountKind.ACCOUNT).name) }
+        var accountIcon by remember(id, section) { mutableStateOf(a?.icon.orEmpty()) }
         val actualId = remember(id) { if (id == "new") UUID.randomUUID().toString() else id }
         AlertDialog(onDismissRequest = { editId = null }, title = { Text(stringResource(headings[section])) }, text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(name, { name = it }, label = { Text(stringResource(if (section == 2) R.string.spelling else if (section == 3) R.string.match_text else R.string.name)) })
-                if (section == 1) Choice(stringResource(R.string.account_kind), accountKind, listOf(AccountKind.ACCOUNT.name to stringResource(R.string.account), AccountKind.CARD.name to stringResource(R.string.card), AccountKind.OTHER.name to stringResource(R.string.other))) { accountKind = it }
+                if (section == 1) {
+                    Choice(stringResource(R.string.account_kind), accountKind, listOf(AccountKind.ACCOUNT.name to stringResource(R.string.account), AccountKind.CARD.name to stringResource(R.string.card), AccountKind.OTHER.name to stringResource(R.string.other))) { accountKind = it }
+                    OutlinedTextField(accountIcon, { accountIcon = it }, singleLine = true, label = { Text(stringResource(R.string.account_icon_label)) }, supportingText = { Text(stringResource(R.string.account_icon_hint)) }, isError = accountIcon.length > 32 || accountIcon.any { it.isISOControl() }, modifier = Modifier.fillMaxWidth().testTag("account_icon_input"))
+                }
                 if (section == 2) OutlinedTextField(canonical, { canonical = it }, label = { Text(stringResource(R.string.canonical)) })
                 if (section == 3) {
                     Choice(stringResource(R.string.match_field), field, listOf(RuleField.MERCHANT.name to stringResource(R.string.merchant), RuleField.NOTES.name to stringResource(R.string.notes))) { field = it }
@@ -416,10 +420,10 @@ private fun Settings(categories: List<Category>, accounts: List<AccountLabel>, a
                 if (id != "new") Text(stringResource(R.string.delete_label_hint), style = MaterialTheme.typography.bodySmall)
             }
         }, confirmButton = {
-            TextButton(enabled = name.isNotBlank() && (section != 2 || canonical.isNotBlank()) && (section != 3 || (category.isNotEmpty() && priority.toIntOrNull() != null)), onClick = {
+            TextButton(enabled = name.isNotBlank() && (section != 1 || (accountIcon.length <= 32 && accountIcon.none { it.isISOControl() })) && (section != 2 || canonical.isNotBlank()) && (section != 3 || (category.isNotEmpty() && priority.toIntOrNull() != null)), onClick = {
                 val command = when(section) {
                     0 -> LedgerCommand.PutCategory(actualId, name, c?.revision)
-                    1 -> LedgerCommand.PutAccount(actualId, name, AccountKind.valueOf(accountKind), a?.revision)
+                    1 -> LedgerCommand.PutAccount(actualId, name, AccountKind.valueOf(accountKind), a?.revision, icon = accountIcon.trim().ifEmpty { null })
                     2 -> LedgerCommand.PutAlias(actualId, name, canonical, alias?.revision)
                     else -> LedgerCommand.PutRule(CategoryRule(actualId, RuleField.valueOf(field), LiteralMatch.valueOf(match), name, category, priority.toInt(), source.ifBlank { null }, account.ifBlank { null }, rule?.revision ?: 0), rule?.revision)
                 }
