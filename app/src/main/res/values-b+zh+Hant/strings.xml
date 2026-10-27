@@ -65,7 +65,7 @@
     <string name="observed_time">擷取時間：%1$s</string>
     <string name="content_revision">內容版本：%1$d</string>
     <string name="notification_sources">通知來源</string>
-    <string name="source_settings_explanation">已忽略的應用程式不再加入收件匣。還原應用程式不會還原個別忽略的項目。解析開關控制你已啟用的範本，不會限制全應用程式擷取。現有記錄保持不變。</string>
+    <string name="source_settings_explanation">擷取開關控制應用程式是否將通知加入收件匣；範本解析開關控制是否使用已啟用的範本。兩者可分別更改，現有記錄不會變更。</string>
     <string name="no_sources">擷取通知後便會顯示來源。</string>
     <string name="restore_app">還原應用程式</string>
     <string name="parsing_source">允許已啟用的範本解析</string>

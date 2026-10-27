@@ -75,6 +75,15 @@ class QuickEntryTest {
         compose.onNodeWithTag("entry_amount").assertIsFocused()
     }
 
+    @Test fun pairedAmountAndDateControlsUseMatchingHeights() {
+        editor(FakeStore())
+        assertEquals(compose.onNodeWithTag("entry_amount").fetchSemanticsNode().size.height,
+            compose.onNodeWithTag("entry_currency").fetchSemanticsNode().size.height)
+        val today = compose.onNodeWithTag("date_today", useUnmergedTree = true).fetchSemanticsNode().size.height
+        assertEquals(today, compose.onNodeWithTag("date_yesterday", useUnmergedTree = true).fetchSemanticsNode().size.height)
+        assertEquals(today, compose.onNodeWithTag("more_date_time", useUnmergedTree = true).fetchSemanticsNode().size.height)
+    }
+
     @Test fun automaticCategoryIsVisibleAndCanBeOverriddenForOneEntry() {
         val store = FakeStore()
         editor(store, listOf(history()), listOf(CategoryRule("rule", RuleField.MERCHANT, LiteralMatch.EQUALS, "Cafe", "food")))

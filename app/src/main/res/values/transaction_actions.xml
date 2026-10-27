@@ -1,0 +1,30 @@
+<resources>
+    <string name="source_captured">Captured</string>
+    <string name="source_capture_toggle">Capture notifications</string>
+    <string name="source_filter_empty">No apps in this view.</string>
+    <string name="account_rule_preview">Account selected by a rule. Tap to change it for this entry.</string>
+    <string name="account_rule_title">Create account rule</string>
+    <string name="account_rule_target">Assign future matching entries to %1$s.</string>
+    <string name="account_rule_merchant">This merchant: %1$s</string>
+    <string name="account_rule_app">Notifications from this app: %1$s</string>
+    <string name="account_rule_replace">This updates the existing rule for this match.</string>
+    <string name="account_rule_hint">Existing entries stay unchanged. Manage account rules under Settings → Account labels.</string>
+    <string name="account_rules">Account rules</string>
+    <string name="account_rules_manage_hint">Create a rule by swiping a transaction toward Account. More specific merchant rules take precedence over app rules.</string>
+    <string name="account_rules_empty">No account rules yet.</string>
+    <string name="delete_account_rule_title">Delete account rule?</string>
+    <string name="delete_account_rule_hint">Existing entries keep their account.</string>
+    <string name="assign_category">Assign category to this entry</string>
+    <string name="assign_account">Assign account to this entry</string>
+    <string name="create_category_rule">Create category rule</string>
+    <string name="create_account_rule">Create account rule</string>
+    <string name="bulk_select">Select</string>
+    <string name="bulk_selected">%1$d selected</string>
+    <string name="bulk_working">Updating entries…</string>
+    <string name="bulk_select_visible">Select all results</string>
+    <string name="bulk_remove_title">Remove selected entries?</string>
+    <string name="bulk_remove_confirm">Remove %1$d selected entries? You can undo immediately after the operation.</string>
+    <string name="bulk_result">Updated %1$d entries. %2$d could not be updated.</string>
+    <string name="bulk_undo_result">Could not undo %1$d entries because they changed or were unavailable.</string>
+    <string name="inbox_ready_help">Ready: recognized and waiting for you to save.</string>
+</resources>

@@ -302,7 +302,6 @@ class NotificationInboxTest {
             original.copy(id = "saved", status = InboxStatus.SAVED), original.copy(id = "ignored", status = InboxStatus.IGNORED))
         compose.setContent { MoneyFlyApp(store, FakeController()) }
         compose.onNodeWithTag("destination_1", useUnmergedTree = true).performClick()
-        compose.onNodeWithTag("inbox_filter_pending").performClick()
         compose.onNodeWithTag("inbox_filter_pending").assertIsSelected()
         compose.onNodeWithTag("inbox_list").performScrollToNode(hasTestTag("receipt_review"))
         compose.onNodeWithTag("receipt_review").assertExists()
@@ -319,7 +318,6 @@ class NotificationInboxTest {
         val store = FakeInboxStore()
         compose.setContent { MoneyFlyApp(store, FakeController()) }
         compose.onNodeWithTag("destination_1", useUnmergedTree = true).performClick()
-        compose.onNodeWithTag("inbox_filter_pending").performClick()
         compose.onNodeWithTag("inbox_list").performScrollToNode(hasTestTag("inbox_search"))
         compose.onNodeWithTag("inbox_search").performTextInput("missing")
         compose.onNodeWithTag("inbox_clear_search", useUnmergedTree = true).performClick()

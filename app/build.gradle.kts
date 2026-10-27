@@ -22,8 +22,8 @@ android {
         applicationId = "com.fishese.moneyfly"
         minSdk = 29
         targetSdk = 36
-        versionCode = 15
-        versionName = "0.9.1"
+        versionCode = 16
+        versionName = "0.10.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     signingConfigs {

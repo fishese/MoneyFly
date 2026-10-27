@@ -1,0 +1,30 @@
+<resources>
+    <string name="source_captured">擷取中</string>
+    <string name="source_capture_toggle">擷取通知</string>
+    <string name="source_filter_empty">此檢視沒有應用程式。</string>
+    <string name="account_rule_preview">帳戶由規則選定。輕按可更改這筆記錄。</string>
+    <string name="account_rule_title">建立帳戶規則</string>
+    <string name="account_rule_target">將未來相符記錄歸入 %1$s。</string>
+    <string name="account_rule_merchant">此商戶：%1$s</string>
+    <string name="account_rule_app">此應用程式的通知：%1$s</string>
+    <string name="account_rule_replace">這會更新現有的相符規則。</string>
+    <string name="account_rule_hint">現有記錄不會變更。可在設定 → 帳戶標籤管理規則。</string>
+    <string name="account_rules">帳戶規則</string>
+    <string name="account_rules_manage_hint">向帳戶方向滑動交易以建立規則。商戶規則優先於應用程式規則。</string>
+    <string name="account_rules_empty">尚未有帳戶規則。</string>
+    <string name="delete_account_rule_title">刪除帳戶規則？</string>
+    <string name="delete_account_rule_hint">現有記錄的帳戶不會變更。</string>
+    <string name="assign_category">為此記錄指定分類</string>
+    <string name="assign_account">為此記錄指定帳戶</string>
+    <string name="create_category_rule">建立分類規則</string>
+    <string name="create_account_rule">建立帳戶規則</string>
+    <string name="bulk_select">選取</string>
+    <string name="bulk_selected">已選取 %1$d 項</string>
+    <string name="bulk_working">正在更新記錄…</string>
+    <string name="bulk_select_visible">選取所有結果</string>
+    <string name="bulk_remove_title">移除已選記錄？</string>
+    <string name="bulk_remove_confirm">移除已選的 %1$d 筆記錄？操作完成後可立即復原。</string>
+    <string name="bulk_result">已更新 %1$d 筆記錄，%2$d 筆未能更新。</string>
+    <string name="bulk_undo_result">%1$d 筆記錄已變更或無法使用，未能復原。</string>
+    <string name="inbox_ready_help">可記錄：已辨識，等待你儲存。</string>
+</resources>

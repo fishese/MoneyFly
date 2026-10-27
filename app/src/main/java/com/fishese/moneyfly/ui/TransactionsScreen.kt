@@ -1,6 +1,7 @@
 package com.fishese.moneyfly.ui
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -31,11 +32,11 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 internal fun Transactions(
     entries: List<LedgerEntry>, categories: List<Category>, accounts: List<AccountLabel>,
-    modifier: Modifier, pendingCount: Int = 0, onPendingInbox: () -> Unit = {}, fx: com.fishese.moneyfly.fx.FxSnapshot? = null, changeDisplay: (Boolean) -> Unit = {}, refreshRates: () -> Unit = {}, edit: (LedgerEntry) -> Unit,
+    modifier: Modifier, pendingCount: Int = 0, onPendingInbox: () -> Unit = {}, fx: com.fishese.moneyfly.fx.FxSnapshot? = null, changeDisplay: (Boolean) -> Unit = {}, refreshRates: () -> Unit = {}, selecting: Boolean = false, selectionBusy: Boolean = false, selectedIds: Set<String> = emptySet(), startSelection: () -> Unit = {}, cancelSelection: () -> Unit = {}, toggleSelection: (String) -> Unit = {}, selectVisible: (List<String>) -> Unit = {}, bulkCategory: () -> Unit = {}, bulkAccount: () -> Unit = {}, bulkRemove: () -> Unit = {}, swipe: (LedgerEntry, TransactionAction) -> Unit = { _, _ -> }, edit: (LedgerEntry) -> Unit,
 ) {
     val today = LocalDate.now()
     var search by rememberSaveable { mutableStateOf("") }
@@ -139,6 +140,7 @@ internal fun Transactions(
                 trailingIcon = if (search.isNotEmpty()) { { TextButton(onClick = { search = "" }, modifier = Modifier.testTag("journal_clear_search").semantics { contentDescription = clearSearch }) { Text("×") } } } else null)
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically) {
                 Text(pluralStringResource(R.plurals.journal_entry_count, rows.size, rows.size), style = MaterialTheme.typography.labelSmall)
+                if (!selecting && entries.isNotEmpty()) TextButton(onClick = startSelection, modifier = Modifier.testTag("start_selection"), contentPadding = PaddingValues(horizontal = 8.dp)) { Text(stringResource(R.string.bulk_select)) }
                 TextButton(onClick = { filters = true }, contentPadding = PaddingValues(horizontal = 10.dp)) { Text(stringResource(R.string.filters), style = MaterialTheme.typography.labelMedium) }
                 Box {
                     TextButton(onClick = { groupMenu = true }, contentPadding = PaddingValues(horizontal = 6.dp)) { Text("${stringResource(R.string.journal_group_by)}: $selectedGroupLabel", style = MaterialTheme.typography.labelMedium) }
@@ -168,6 +170,22 @@ internal fun Transactions(
                 if (entries.any { !it.deleted }) OutlinedButton(onClick = { clear() }) { Text(stringResource(R.string.journal_reset_filters_all_time)) }
             }
         }
+        if (selecting) stickyHeader(key = "selection_toolbar") {
+            Surface(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surfaceContainerHigh, shape = MaterialTheme.shapes.medium) {
+                Column(Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(if (selectionBusy) stringResource(R.string.bulk_working) else stringResource(R.string.bulk_selected, selectedIds.size), Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
+                        TextButton(onClick = cancelSelection, enabled = !selectionBusy, modifier = Modifier.testTag("cancel_selection")) { Text(stringResource(R.string.cancel)) }
+                    }
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        TextButton(onClick = { selectVisible(rows.map { it.id }) }, enabled = !selectionBusy, modifier = Modifier.testTag("select_visible")) { Text(stringResource(R.string.bulk_select_visible)) }
+                        TextButton(onClick = bulkCategory, enabled = !selectionBusy && selectedIds.isNotEmpty(), modifier = Modifier.testTag("bulk_category")) { Text(stringResource(R.string.category)) }
+                        TextButton(onClick = bulkAccount, enabled = !selectionBusy && selectedIds.isNotEmpty(), modifier = Modifier.testTag("bulk_account")) { Text(stringResource(R.string.account)) }
+                        TextButton(onClick = bulkRemove, enabled = !selectionBusy && selectedIds.isNotEmpty(), modifier = Modifier.testTag("bulk_remove")) { Text(stringResource(R.string.delete)) }
+                    }
+                }
+            }
+        }
         groups.forEach { group ->
             val key = "$grouping:${group.key}"
             item(key = "header:$key") {
@@ -184,7 +202,9 @@ internal fun Transactions(
                     }
                 }
             }
-            if (key !in collapsed) items(group.entries, key = { it.id }) { entry -> JournalRow(entry, categories, accounts, edit, if (combined) fx else null) }
+            if (key !in collapsed) items(group.entries, key = { it.id }) { entry ->
+                TransactionSwipe(entry, selecting, swipe) { JournalRow(entry, categories, accounts, edit, if (combined) fx else null, selecting, entry.id in selectedIds, selectionBusy, { toggleSelection(entry.id) }) }
+            }
         }
     }
     if (filters) ModalBottomSheet(onDismissRequest = { filters = false }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
@@ -203,12 +223,13 @@ internal fun Transactions(
 }
 
 @Composable
-private fun JournalRow(entry: LedgerEntry, categories: List<Category>, accounts: List<AccountLabel>, edit: (LedgerEntry) -> Unit, fx: com.fishese.moneyfly.fx.FxSnapshot? = null) {
+private fun JournalRow(entry: LedgerEntry, categories: List<Category>, accounts: List<AccountLabel>, edit: (LedgerEntry) -> Unit, fx: com.fishese.moneyfly.fx.FxSnapshot? = null, selecting: Boolean = false, selected: Boolean = false, selectionBusy: Boolean = false, toggle: () -> Unit = {}) {
     val draft = entry.draft
     val conversion = fx?.convert(entry)
     val amountLabel = if (conversion != null) "${fx.currency} ${conversion.amount.toPlainString()}" else "${draft.currency} ${draft.amount}"
-    Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp).testTag("transaction_${entry.id}").clickable { edit(entry) }.padding(vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp).testTag("transaction_${entry.id}").clickable(enabled = !selectionBusy) { if (selecting) toggle() else edit(entry) }.padding(vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
+            if (selecting) Checkbox(checked = selected, onCheckedChange = { toggle() }, enabled = !selectionBusy, modifier = Modifier.testTag("select_entry_${entry.id}"))
             Text(draft.canonicalMerchant?.takeIf { it.isNotBlank() } ?: draft.merchant.ifBlank { stringResource(R.string.no_merchant) }, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
             Text(amountLabel, Modifier.widthIn(max = 170.dp), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = if (draft.kind == EntryKind.INCOME || draft.kind == EntryKind.REFUND) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
         }

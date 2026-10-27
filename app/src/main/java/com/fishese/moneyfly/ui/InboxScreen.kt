@@ -43,7 +43,7 @@ internal fun InboxScreen(
     val settings by settingsFlow.collectAsStateWithLifecycle(CaptureSettings())
     val connection by connectionFlow.collectAsStateWithLifecycle(CaptureConnection())
     var consentDialog by rememberSaveable { mutableStateOf(false) }
-    var filter by rememberSaveable { mutableStateOf("all") }
+    var filter by rememberSaveable { mutableStateOf("pending") }
     var app by rememberSaveable { mutableStateOf("") }
     var keyword by rememberSaveable { mutableStateOf("") }
     var controlsExpanded by rememberSaveable { mutableStateOf(false) }
@@ -77,6 +77,7 @@ internal fun InboxScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(stringResource(R.string.inbox), style = MaterialTheme.typography.headlineMedium)
                     Text(stringResource(R.string.inbox_ui_counts, inbox.count { it.status == InboxStatus.READY }, inbox.count { it.status == InboxStatus.REVIEW_NEEDED }), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (inbox.any { it.status == InboxStatus.READY }) Text(stringResource(R.string.inbox_ready_help), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     val pendingCount = inbox.count { it.status in setOf(InboxStatus.READY, InboxStatus.REVIEW_NEEDED, InboxStatus.UNRECOGNIZED) }
                     FilterChip(selected = filter == "pending", onClick = { filter = if (filter == "pending") "all" else "pending" }, label = { Text(stringResource(R.string.inbox_pending_view, pendingCount)) }, modifier = Modifier.testTag("inbox_filter_pending"))
                     Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = MaterialTheme.shapes.large) {
@@ -120,14 +121,16 @@ internal fun InboxScreen(
                                 sourceNames.toList().sortedBy { it.second }.forEach { (source, name) -> DropdownMenuItem(text = { Text(name) }, onClick = { app = source; appMenu = false }) }
                             }
                         }
-                        if (keyword.isNotEmpty() || filter != "all" || app.isNotEmpty()) TextButton(onClick = { keyword = ""; filter = "all"; app = "" }, modifier = Modifier.heightIn(min = 48.dp).testTag("inbox_clear_filters")) { Text(stringResource(R.string.clear_all)) }
+                        if (keyword.isNotEmpty() || filter != "pending" || app.isNotEmpty()) TextButton(onClick = { keyword = ""; filter = "pending"; app = "" }, modifier = Modifier.heightIn(min = 48.dp).testTag("inbox_clear_filters")) { Text(stringResource(R.string.clear_all)) }
                     }
                     if (keyword.isNotEmpty() || filter != "all" || app.isNotEmpty()) Text(stringResource(R.string.inbox_showing_count, rows.size), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.testTag("inbox_showing_count"))
                 }
             }
             if (rows.isEmpty()) item {
                 Text(stringResource(when {
-                    filter == "pending" && keyword.isBlank() && app.isEmpty() -> R.string.inbox_pending_empty
+                    filter == "pending" && keyword.isBlank() && app.isEmpty() && settings.consent && connection.accessGranted && connection.connected -> R.string.inbox_pending_empty
+                    filter == "pending" && keyword.isBlank() && app.isEmpty() && !settings.consent -> R.string.paused_empty
+                    filter == "pending" && keyword.isBlank() && app.isEmpty() && (!connection.accessGranted || !connection.connected) -> R.string.disconnected_empty
                     filter == "ready" -> R.string.ready_empty
                     app.isNotEmpty() && sources.any { it.sourcePackage == app && it.ignored } && filter != "ignored" -> R.string.hidden_source_empty
                     keyword.isNotBlank() || app.isNotEmpty() || filter != "all" -> R.string.inbox_no_matches
@@ -255,10 +258,7 @@ private fun PendingReceiptSwipe(
                 }
             }) { content() }
         choices?.let { selected ->
-            AlertDialog(
-                onDismissRequest = { choices = null },
-                title = { Text(stringResource(if (selected == SwipeChoices.IGNORE) R.string.ignore_heading else R.string.record_heading)) },
-                text = {
+            SwipeActionSheet(title = stringResource(if (selected == SwipeChoices.IGNORE) R.string.ignore_heading else R.string.record_heading), dismiss = { choices = null }) {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         if (selected == SwipeChoices.IGNORE) {
                             TextButton(onClick = { choices = null; ignoreThis() }, modifier = Modifier.fillMaxWidth().testTag("swipe_ignore_this_${item.id}")) { Text(stringResource(R.string.ignore_choice_this)) }
@@ -269,10 +269,7 @@ private fun PendingReceiptSwipe(
                             TextButton(onClick = { choices = null; recordTemplate() }, modifier = Modifier.fillMaxWidth().testTag("swipe_record_template_${item.id}")) { Text(stringResource(R.string.record_choice_template)) }
                         }
                     }
-                },
-                confirmButton = {},
-                dismissButton = { TextButton(onClick = { choices = null }) { Text(stringResource(R.string.cancel)) } },
-            )
+            }
         }
     }
 }
@@ -297,7 +294,12 @@ private fun ReceiptCard(item: InboxItem, sourceName: String, sourceIgnored: Bool
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(sourceName, Modifier.widthIn(max = 160.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(item.postedAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT)), style = MaterialTheme.typography.labelSmall)
-            Text(stringResource(when (item.status) { InboxStatus.UNRECOGNIZED -> R.string.unrecognized; InboxStatus.READY -> R.string.ready; InboxStatus.REVIEW_NEEDED -> R.string.review_needed; InboxStatus.SAVED -> R.string.saved; InboxStatus.LINKED_DUPLICATE -> R.string.linked_duplicate; InboxStatus.IGNORED -> R.string.ignored; InboxStatus.REMOVED -> R.string.entry_removed }), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = if (item.status == InboxStatus.REVIEW_NEEDED) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
+            val statusLabel = stringResource(when (item.status) { InboxStatus.UNRECOGNIZED -> R.string.unrecognized; InboxStatus.READY -> R.string.ready; InboxStatus.REVIEW_NEEDED -> R.string.review_needed; InboxStatus.SAVED -> R.string.saved; InboxStatus.LINKED_DUPLICATE -> R.string.linked_duplicate; InboxStatus.IGNORED -> R.string.ignored; InboxStatus.REMOVED -> R.string.entry_removed })
+            if (saved || ignored) {
+                Surface(color = if (saved) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.small) {
+                    Text(statusLabel, Modifier.padding(horizontal = 6.dp, vertical = 2.dp), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, color = if (saved) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            } else Text(statusLabel, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = if (item.status == InboxStatus.REVIEW_NEEDED) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
             }
             item.draft?.let {
                 if (it.merchant.isNotBlank()) Text(it.merchant, style = MaterialTheme.typography.titleLarge)
@@ -387,20 +389,34 @@ internal fun NotificationContent(item: InboxItem, expanded: Boolean) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun SourceSettings(sources: List<SourcePreference>, execute: (LedgerCommand) -> Unit) {
+internal fun SourceSettings(sources: List<SourcePreference>, sourceName: (String) -> String = { it }, execute: (LedgerCommand) -> Unit) {
     var expanded by rememberSaveable { mutableStateOf(false) }
+    var filter by rememberSaveable { mutableStateOf("all") }
     OutlinedButton(onClick = { expanded = !expanded }, modifier = Modifier.testTag("source_settings")) { Text(stringResource(R.string.notification_sources)) }
     if (expanded) {
         Text(stringResource(R.string.source_settings_explanation), style = MaterialTheme.typography.bodySmall)
         if (sources.isEmpty()) Text(stringResource(R.string.no_sources))
-        sources.sortedBy { it.sourcePackage }.forEach { source ->
-            Text(source.sourcePackage, style = MaterialTheme.typography.titleSmall)
-            if (source.ignored) OutlinedButton(onClick = { execute(LedgerCommand.SetIgnoredSource(source.sourcePackage, false, source.revision)) }, modifier = Modifier.testTag("restore_source_${source.sourcePackage}")) { Text(stringResource(R.string.restore_app)) }
-            else TextButton(onClick = { execute(LedgerCommand.SetIgnoredSource(source.sourcePackage, true, source.revision)) }) { Text(stringResource(R.string.ignore_app)) }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("all" to R.string.all, "captured" to R.string.source_captured, "ignored" to R.string.ignored).forEach { (value, label) ->
+                FilterChip(selected = filter == value, onClick = { filter = value }, label = { Text(stringResource(label)) }, modifier = Modifier.testTag("source_filter_$value"))
+            }
+        }
+        val shown = sources.filter { filter == "all" || (filter == "captured" && !it.ignored) || (filter == "ignored" && it.ignored) }
+            .sortedWith(compareBy<SourcePreference> { it.ignored }.thenBy { sourceName(it.sourcePackage).lowercase(java.util.Locale.ROOT) }.thenBy { it.sourcePackage })
+        if (shown.isEmpty() && sources.isNotEmpty()) Text(stringResource(R.string.source_filter_empty), style = MaterialTheme.typography.bodySmall)
+        shown.forEach { source ->
+            val name = sourceName(source.sourcePackage).ifBlank { source.sourcePackage }
+            HorizontalDivider(Modifier.padding(top = 8.dp))
+            Text(if (name == source.sourcePackage) name else "$name [${source.sourcePackage}]", style = MaterialTheme.typography.titleSmall)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                Text(stringResource(R.string.source_capture_toggle), Modifier.weight(1f))
+                Switch(checked = !source.ignored, onCheckedChange = { execute(LedgerCommand.SetIgnoredSource(source.sourcePackage, !it, source.revision)) }, modifier = Modifier.testTag("restore_source_${source.sourcePackage}"))
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                 Text(stringResource(R.string.parsing_source), Modifier.weight(1f))
-                Switch(checked = source.parsingEnabled, onCheckedChange = { execute(LedgerCommand.SetParsingSource(source.sourcePackage, it, source.revision)) }, enabled = !source.ignored)
+                Switch(checked = source.parsingEnabled, onCheckedChange = { execute(LedgerCommand.SetParsingSource(source.sourcePackage, it, source.revision)) }, enabled = !source.ignored, modifier = Modifier.testTag("parse_source_${source.sourcePackage}"))
             }
         }
     }

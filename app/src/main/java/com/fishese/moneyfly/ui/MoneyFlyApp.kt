@@ -63,6 +63,7 @@ fun MoneyFlyApp(store: LedgerStore, captureController: CaptureController? = null
         val accounts by store.accounts.collectAsStateWithLifecycle(emptyList())
         val aliases by store.aliases.collectAsStateWithLifecycle(emptyList())
         val rules by store.rules.collectAsStateWithLifecycle(emptyList())
+        val accountRules by store.accountRules.collectAsStateWithLifecycle(emptyList())
         val inboxStore = store as? InboxStore
         val inboxFlow = remember(inboxStore) { inboxStore?.inbox ?: flowOf(emptyList()) }
         val sourceFlow = remember(inboxStore) { inboxStore?.sources ?: flowOf(emptyList()) }
@@ -81,6 +82,16 @@ fun MoneyFlyApp(store: LedgerStore, captureController: CaptureController? = null
         var receiptRevision by rememberSaveable { mutableLongStateOf(0) }
         var separatePurchase by rememberSaveable { mutableStateOf(false) }
         var templateReceiptId by rememberSaveable { mutableStateOf<String?>(null) }
+        var selecting by rememberSaveable { mutableStateOf(false) }
+        var selectedIds by rememberSaveable { mutableStateOf(listOf<String>()) }
+        var swipeEntry by remember { mutableStateOf<LedgerEntry?>(null) }
+        var swipeAction by remember { mutableStateOf<TransactionAction?>(null) }
+        var pickerMode by remember { mutableStateOf<String?>(null) }
+        var ruleCategory by remember { mutableStateOf<String?>(null) }
+        var ruleAccount by remember { mutableStateOf<String?>(null) }
+        var bulkSnapshot by remember { mutableStateOf<List<LedgerEntry>>(emptyList()) }
+        var confirmBulkRemove by remember { mutableStateOf(false) }
+        var bulkRunning by remember { mutableStateOf(false) }
         val snackbar = remember { SnackbarHostState() }
         val scope = rememberCoroutineScope()
         val undo = stringResource(R.string.undo)
@@ -88,6 +99,36 @@ fun MoneyFlyApp(store: LedgerStore, captureController: CaptureController? = null
         val failed = stringResource(R.string.operation_failed)
         val conflict = stringResource(R.string.conflict)
         val addExpenseLabel = stringResource(R.string.shell_add_expense)
+        val bulkResult = stringResource(R.string.bulk_result)
+        val bulkUndoResult = stringResource(R.string.bulk_undo_result)
+        fun applyBulk(snapshot: List<LedgerEntry>, action: String, value: String? = null) {
+            if (bulkRunning || snapshot.isEmpty()) return
+            bulkRunning = true
+            scope.launch {
+                val succeeded = mutableListOf<Pair<String, Long>>()
+                var failedCount = 0
+                for (entry in snapshot) {
+                    val command: LedgerCommand = when (action) {
+                        "delete" -> LedgerCommand.Delete(entry.id, entry.revision)
+                        "category" -> LedgerCommand.Edit(entry.id, entry.revision, entry.draft.copy(categoryId = value, categoryOrigin = if (value == null) CategoryOrigin.UNASSIGNED else CategoryOrigin.EXPLICIT))
+                        else -> LedgerCommand.Edit(entry.id, entry.revision, entry.draft.copy(accountId = value))
+                    }
+                    try {
+                        val result = store.execute(command)
+                        if (result.applied && result.revision != null) succeeded += command.operationId to result.revision else failedCount++
+                    } catch (cancelled: CancellationException) { throw cancelled } catch (_: Exception) { failedCount++ }
+                }
+                selecting = false; selectedIds = emptyList(); bulkRunning = false
+                if (snackbar.showSnackbar(bulkResult.format(succeeded.size, failedCount), if (succeeded.isNotEmpty()) undo else null, duration = SnackbarDuration.Long) == SnackbarResult.ActionPerformed) {
+                    var undoFailed = 0
+                    for ((operation, revision) in succeeded) {
+                        try { if (!store.execute(LedgerCommand.Undo(operation, revision)).applied) undoFailed++ }
+                        catch (cancelled: CancellationException) { throw cancelled } catch (_: Exception) { undoFailed++ }
+                    }
+                    if (undoFailed > 0) snackbar.showSnackbar(bulkUndoResult.format(undoFailed))
+                }
+            }
+        }
         fun run(command: LedgerCommand, offerUndo: Boolean = false, done: () -> Unit = {}, onApplied: (CommandResult) -> Unit = {}) {
             scope.launch {
                 try {
@@ -133,17 +174,24 @@ fun MoneyFlyApp(store: LedgerStore, captureController: CaptureController? = null
                     }
                 }
             },
-            floatingActionButton = { if (destination == 0) ExtendedFloatingActionButton(modifier = Modifier.testTag("add_entry").semantics { contentDescription = addExpenseLabel }, onClick = { editorId = "new"; editingRevision = 0 }, icon = { Icon(Icons.Default.Add, null) }, text = { Text(addExpenseLabel) }, containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary) },
+            floatingActionButton = { if (destination == 0 && !selecting) ExtendedFloatingActionButton(modifier = Modifier.testTag("add_entry").semantics { contentDescription = addExpenseLabel }, onClick = { editorId = "new"; editingRevision = 0 }, icon = { Icon(Icons.Default.Add, null) }, text = { Text(addExpenseLabel) }, containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary) },
         ) { padding ->
             when (destination) {
                 0 -> Transactions(entries, categories, accounts, Modifier.padding(padding), pendingCount = pendingCount, onPendingInbox = { destination = 1 },
                     fx = if (fxRepository == null) null else fxState,
                     changeDisplay = { separate -> scope.launch { fxRepository?.setSeparate(separate) } },
-                    refreshRates = { scope.launch { fxRepository?.refresh(entries, force = true) } }) { editorId = it.id; editingRevision = it.revision }
+                    refreshRates = { scope.launch { fxRepository?.refresh(entries, force = true) } }, selecting = selecting, selectionBusy = bulkRunning, selectedIds = selectedIds.toSet(),
+                    startSelection = { selecting = true; selectedIds = emptyList() }, cancelSelection = { selecting = false; selectedIds = emptyList() },
+                    toggleSelection = { id -> selectedIds = if (id in selectedIds) selectedIds - id else selectedIds + id },
+                    selectVisible = { ids -> selectedIds = (selectedIds + ids).distinct() },
+                    bulkCategory = { bulkSnapshot = entries.filter { it.id in selectedIds }; pickerMode = "bulk-category" },
+                    bulkAccount = { bulkSnapshot = entries.filter { it.id in selectedIds }; pickerMode = "bulk-account" },
+                    bulkRemove = { bulkSnapshot = entries.filter { it.id in selectedIds }; confirmBulkRemove = true },
+                    swipe = { entry, action -> swipeEntry = entry; swipeAction = action }) { editorId = it.id; editingRevision = it.revision }
                 1 -> InboxScreen(inboxStore, captureController, inbox, sources, entries, Modifier.padding(padding), templates.isNotEmpty(), execute = { command, applied -> run(command, onApplied = applied) },
                     record = { receipt, separate -> receiptId = receipt.id; receiptRevision = receipt.revision; separatePurchase = separate },
                     viewEntry = { entry -> editorId = entry.id; editingRevision = entry.revision }, createTemplate = { templateReceiptId = it.id })
-                2 -> Settings(categories, accounts, aliases, rules, sources, templates, ignoreRules, Modifier.padding(padding), store, fxRepository, fxState, entries) { command, done -> run(command, done = done) }
+                2 -> Settings(categories, accounts, aliases, rules, accountRules, sources, templates, ignoreRules, Modifier.padding(padding), store, fxRepository, fxState, entries, captureController) { command, done -> run(command, done = done) }
             }
         }
         editorId?.let { id ->
@@ -161,13 +209,13 @@ fun MoneyFlyApp(store: LedgerStore, captureController: CaptureController? = null
                         }
                     }
                 },
-                delete = { if (entry != null) run(LedgerCommand.Delete(entry.id, editingRevision), true, done = { editorId = null }) }, recentEntries = entries, reportingCurrency = fxState.currency, fx = fxState)
+                delete = { if (entry != null) run(LedgerCommand.Delete(entry.id, editingRevision), true, done = { editorId = null }) }, recentEntries = entries, reportingCurrency = fxState.currency, fx = fxState, accountRules = accountRules)
         }
         receiptId?.let { id ->
             val receipt = inbox.find { it.id == id }
             if (receipt != null) EntryEditor("receipt-$id", 0, null, categories, accounts, aliases, rules, store,
                 close = { receiptId = null }, saved = { _, _ -> receiptId = null }, delete = {},
-                receipt = receipt, receiptRevision = receiptRevision, separatePurchase = separatePurchase, recentEntries = entries, reportingCurrency = fxState.currency, fx = fxState)
+                receipt = receipt, receiptRevision = receiptRevision, separatePurchase = separatePurchase, recentEntries = entries, reportingCurrency = fxState.currency, fx = fxState, accountRules = accountRules)
         }
         templateReceiptId?.let { id ->
             val item = inbox.find { it.id == id }
@@ -182,6 +230,36 @@ fun MoneyFlyApp(store: LedgerStore, captureController: CaptureController? = null
                 }
             })
         }
+        val actionEntry = swipeEntry
+        if (actionEntry != null && swipeAction != null) SwipeActionSheet(stringResource(if (swipeAction == TransactionAction.CATEGORY) R.string.category else R.string.account), dismiss = { swipeAction = null; swipeEntry = null }) {
+            val prefix = if (swipeAction == TransactionAction.CATEGORY) "category" else "account"
+            TextButton(onClick = { pickerMode = "single-$prefix"; swipeAction = null }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("swipe_assign_$prefix")) { Text(stringResource(if (prefix == "category") R.string.assign_category else R.string.assign_account)) }
+            TextButton(onClick = { pickerMode = "rule-$prefix"; swipeAction = null }, enabled = if (prefix == "category") actionEntry.draft.merchant.isNotBlank() else actionEntry.draft.merchant.isNotBlank() || actionEntry.draft.sourcePackage != null, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("swipe_rule_$prefix")) { Text(stringResource(if (prefix == "category") R.string.create_category_rule else R.string.create_account_rule)) }
+        }
+        pickerMode?.let { mode ->
+            val categoryPicker = mode.endsWith("category")
+            EditorLabelPicker(stringResource(if (categoryPicker) R.string.category else R.string.account),
+                if (categoryPicker) categories.map { it.id to it.name } else accounts.map { it.id to it.name },
+                stringResource(if (categoryPicker) R.string.uncategorized else R.string.unassigned),
+                if (mode.startsWith("single") || mode.startsWith("rule")) (if (categoryPicker) actionEntry?.draft?.categoryId else actionEntry?.draft?.accountId).orEmpty() else "",
+                dismiss = { pickerMode = null; swipeEntry = null }, categoryStore = if (categoryPicker) store else null) { chosen ->
+                pickerMode = null
+                when (mode) {
+                    "bulk-category" -> applyBulk(bulkSnapshot, "category", chosen.ifEmpty { null })
+                    "bulk-account" -> applyBulk(bulkSnapshot, "account", chosen.ifEmpty { null })
+                    "single-category" -> actionEntry?.let { run(LedgerCommand.Edit(it.id, it.revision, it.draft.copy(categoryId = chosen.ifEmpty { null }, categoryOrigin = if (chosen.isEmpty()) CategoryOrigin.UNASSIGNED else CategoryOrigin.EXPLICIT)), true) }
+                    "single-account" -> actionEntry?.let { run(LedgerCommand.Edit(it.id, it.revision, it.draft.copy(accountId = chosen.ifEmpty { null })), true) }
+                    "rule-category" -> if (chosen.isNotEmpty()) ruleCategory = chosen else swipeEntry = null
+                    "rule-account" -> if (chosen.isNotEmpty()) ruleAccount = chosen else swipeEntry = null
+                }
+                if (mode.startsWith("single")) swipeEntry = null
+            }
+        }
+        if (actionEntry != null && ruleCategory != null) MerchantRuleDialog(store, rules, actionEntry.draft.canonicalMerchant ?: actionEntry.draft.merchant, ruleCategory!!, categories.find { it.id == ruleCategory }?.name.orEmpty()) { ruleCategory = null; swipeEntry = null }
+        if (actionEntry != null && ruleAccount != null) AccountRuleDialog(store, accountRules, actionEntry, ruleAccount!!, accounts.find { it.id == ruleAccount }?.name.orEmpty()) { ruleAccount = null; swipeEntry = null }
+        if (confirmBulkRemove) AlertDialog(onDismissRequest = { confirmBulkRemove = false }, title = { Text(stringResource(R.string.bulk_remove_title)) }, text = { Text(stringResource(R.string.bulk_remove_confirm, bulkSnapshot.size)) },
+            confirmButton = { TextButton(onClick = { confirmBulkRemove = false; applyBulk(bulkSnapshot, "delete") }, modifier = Modifier.testTag("confirm_bulk_remove")) { Text(stringResource(R.string.delete)) } },
+            dismissButton = { TextButton(onClick = { confirmBulkRemove = false }) { Text(stringResource(R.string.cancel)) } })
     }
 }
 
@@ -210,7 +288,7 @@ internal fun DateField(label: String, value: String, allowBlank: Boolean = false
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun Settings(categories: List<Category>, accounts: List<AccountLabel>, aliases: List<MerchantAlias>, rules: List<CategoryRule>, sources: List<SourcePreference>, templates: List<TemplateDefinition>, ignoreRules: List<IgnoreRule>, modifier: Modifier, store: LedgerStore, fxRepository: com.fishese.moneyfly.fx.FxRepository?, fxState: com.fishese.moneyfly.fx.FxSnapshot, entries: List<LedgerEntry>, execute: (LedgerCommand, () -> Unit) -> Unit) {
+private fun Settings(categories: List<Category>, accounts: List<AccountLabel>, aliases: List<MerchantAlias>, rules: List<CategoryRule>, accountRules: List<AccountRule>, sources: List<SourcePreference>, templates: List<TemplateDefinition>, ignoreRules: List<IgnoreRule>, modifier: Modifier, store: LedgerStore, fxRepository: com.fishese.moneyfly.fx.FxRepository?, fxState: com.fishese.moneyfly.fx.FxSnapshot, entries: List<LedgerEntry>, captureController: CaptureController?, execute: (LedgerCommand, () -> Unit) -> Unit) {
     var section by rememberSaveable { mutableIntStateOf(0) }
     var editId by rememberSaveable { mutableStateOf<String?>(null) }
     var search by rememberSaveable { mutableStateOf("") }
@@ -261,6 +339,7 @@ private fun Settings(categories: List<Category>, accounts: List<AccountLabel>, a
                 Spacer(Modifier.height(16.dp))
                 ExpenseCategorySuggestions(categories, store, customCategory = { editId = "new" })
             }
+            if (section == 1) AccountRuleSettings(accountRules, accounts, { captureController?.sourceName(it) ?: it }) { command -> execute(command) {} }
             if (section == 3) {
                 Text(stringResource(R.string.rule_hint), style = MaterialTheme.typography.bodySmall)
                 OutlinedButton(onClick = { confirmApplyCategories = true }, enabled = !applyingCategories && rules.isNotEmpty(), modifier = Modifier.fillMaxWidth().testTag("apply_category_rules")) { Text(stringResource(if (applyingCategories) R.string.category_apply_running else R.string.category_apply_existing)) }
@@ -282,7 +361,7 @@ private fun Settings(categories: List<Category>, accounts: List<AccountLabel>, a
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Text(stringResource(R.string.shell_notifications), Modifier.padding(top = 24.dp), style = MaterialTheme.typography.titleLarge)
             Text(stringResource(R.string.shell_notifications_hint), Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
-            SourceSettings(sources) { command -> execute(command) {} }
+            SourceSettings(sources, sourceName = { captureController?.sourceName(it) ?: it }) { command -> execute(command) {} }
             IgnoreRuleSettings(ignoreRules) { command -> execute(command) {} }
             TemplateSettings(templates, store, execute)
             Text(stringResource(R.string.local_journal), Modifier.padding(vertical = 20.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
