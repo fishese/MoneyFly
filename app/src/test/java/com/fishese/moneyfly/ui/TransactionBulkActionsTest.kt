@@ -3,6 +3,7 @@ package com.fishese.moneyfly.ui
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.geometry.Offset
 import com.fishese.moneyfly.ledger.*
 import java.time.Instant
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,6 +18,14 @@ import org.robolectric.annotation.Config
 @Config(sdk = [35], qualifiers = "en-rUS")
 class TransactionBulkActionsTest {
     @get:Rule val compose = createComposeRule()
+    private fun centerRow(tag: String) {
+        val list = compose.onNodeWithTag("transactions_list")
+        list.performScrollToNode(hasTestTag(tag))
+        val listNode = list.fetchSemanticsNode()
+        val node = compose.onNodeWithTag(tag, useUnmergedTree = true).fetchSemanticsNode()
+        val delta = node.positionInRoot.y + node.size.height / 2f - listNode.positionInRoot.y - listNode.size.height / 2f
+        list.performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, delta) }
+    }
     @Test fun selectAllAssignCategoryThenConfirmRemoveOne() {
         val store = Store()
         compose.setContent { MoneyFlyApp(store) }
@@ -43,7 +52,7 @@ class TransactionBulkActionsTest {
     @Test fun swipeOpensChoicesBeforeUpdatingTheEntry() {
         val store = Store()
         compose.setContent { MoneyFlyApp(store) }
-        compose.onNodeWithTag("transactions_list").performScrollToNode(hasTestTag("transaction_swipe_one"))
+        centerRow("transaction_swipe_one")
         compose.onNode(hasText("Account") and hasAnyAncestor(hasTestTag("transaction_swipe_one")), useUnmergedTree = true).assertDoesNotExist()
         compose.onNodeWithTag("transaction_swipe_one", useUnmergedTree = true).performTouchInput { swipeLeft() }
         compose.waitForIdle()
@@ -52,6 +61,23 @@ class TransactionBulkActionsTest {
         compose.onNodeWithTag("editor_label_travel", useUnmergedTree = true).performClick()
         compose.waitUntil { store.commands.any { it is LedgerCommand.Edit } }
         compose.runOnIdle { assertEquals("travel", store.commands.filterIsInstance<LedgerCommand.Edit>().single().draft.categoryId) }
+    }
+
+    @Test fun dividerStaysStillDuringPartialSwipe() {
+        val store = Store()
+        compose.setContent { MoneyFlyApp(store) }
+        centerRow("transaction_swipe_one")
+        val divider = compose.onNodeWithTag("transaction_divider_one", useUnmergedTree = true)
+        val initial = divider.fetchSemanticsNode().positionInRoot
+        compose.onNodeWithTag("transaction_swipe_one", useUnmergedTree = true).performTouchInput {
+            down(center)
+            moveBy(Offset(-width * 0.2f, 0f))
+        }
+        val during = divider.fetchSemanticsNode().positionInRoot
+        assertEquals(initial.x, during.x, 0.5f)
+        assertEquals(initial.y, during.y, 0.5f)
+        compose.onNodeWithTag("transaction_swipe_one", useUnmergedTree = true).performTouchInput { up() }
+        compose.runOnIdle { assertTrue(store.commands.isEmpty()) }
     }
 
     @Test fun transactionRowShowsAccountIconButNotAccountName() {
@@ -68,7 +94,7 @@ class TransactionBulkActionsTest {
     @Test fun swipeRightCanCreateAccountRuleWithoutChangingTheEntry() {
         val store = Store()
         compose.setContent { MoneyFlyApp(store) }
-        compose.onNodeWithTag("transactions_list").performScrollToNode(hasTestTag("transaction_swipe_one"))
+        centerRow("transaction_swipe_one")
         compose.onNodeWithTag("transaction_swipe_one", useUnmergedTree = true).performTouchInput { swipeRight() }
         compose.waitForIdle()
         compose.onNodeWithTag("swipe_rule_account", useUnmergedTree = true).performClick()

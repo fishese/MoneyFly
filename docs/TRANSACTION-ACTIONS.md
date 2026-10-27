@@ -1,8 +1,8 @@
 # Transaction actions and account rules
 
 Swipe a transaction left for category actions, or right for account actions. The
-first choice changes that entry only. The second creates a rule for future entries;
-it does not rewrite existing entries. Saved account rules can be reviewed or deleted
+first choice changes that entry only. Category rules also categorize matching
+existing uncategorized expenses; account rules apply to future entries. Saved account rules can be reviewed or deleted
 in Settings → Account labels → Account rules.
 
 Account rules can match an exact merchant name (ignoring case and extra whitespace)

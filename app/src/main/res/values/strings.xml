@@ -174,7 +174,7 @@
     <string name="category_rule_create_title">Create category rule?</string>
     <string name="category_rule_create_detail">New expenses with merchant “%1$s” will be categorized as %2$s.</string>
     <string name="category_rule_replace">This updates the existing exact-match rule for this merchant.</string>
-    <string name="category_rule_create_hint">Only this merchant name matches, ignoring case and extra spaces. Manage rules in Settings. Existing entries are unchanged.</string>
+    <string name="category_rule_create_hint">Only this merchant name matches, ignoring case and extra spaces. Matching uncategorized expenses will be categorized too. Manage rules in Settings.</string>
     <string name="category_rule_failed">Could not save this rule. Try again or check the rules in Settings.</string>
     <string name="category_rule_save">Save rule</string>
     <string name="category_apply_existing">Categorize existing expenses</string>

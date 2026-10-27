@@ -207,7 +207,10 @@ internal fun Transactions(
                 }
             }
             if (key !in collapsed) items(group.entries, key = { it.id }) { entry ->
-                TransactionSwipe(entry, selecting, swipe) { JournalRow(entry, categories, accounts, edit, if (combined) fx else null, selecting, entry.id in selectedIds, selectionBusy, { toggleSelection(entry.id) }) }
+                Column {
+                    TransactionSwipe(entry, selecting, swipe) { JournalRow(entry, categories, accounts, edit, if (combined) fx else null, selecting, entry.id in selectedIds, selectionBusy, { toggleSelection(entry.id) }) }
+                    HorizontalDivider(Modifier.padding(horizontal = 12.dp, vertical = 4.dp).testTag("transaction_divider_${entry.id}"), color = MaterialTheme.colorScheme.outlineVariant)
+                }
             }
         }
     }
@@ -250,6 +253,5 @@ private fun JournalRow(entry: LedgerEntry, categories: List<Category>, accounts:
         }
         Text(draft.occurredAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT)), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (draft.notes.isNotBlank()) Text(draft.notes, style = MaterialTheme.typography.bodySmall, maxLines = 2, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        HorizontalDivider(Modifier.padding(top = 4.dp), color = MaterialTheme.colorScheme.outlineVariant)
     }
 }
