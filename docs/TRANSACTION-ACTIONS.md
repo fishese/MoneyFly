@@ -26,7 +26,7 @@ changes, and checks revisions again before restoring them.
 
 The Inbox opens on entries needing attention. Ready means recognized and waiting
 for a manual save; Review needed and Unrecognized are also included. All, Saved and
-Ignored remain accessible. Notification source capture and template parsing are
-independent switches: turning off capture prevents new notifications entering the
-Inbox; turning off template parsing still captures them without automatic template
-recognition. App names come from Android when available, with package names shown.
+Ignored remain accessible. Turning off capture for a notification source prevents new
+notifications from entering the Inbox. Enabled templates automatically recognize
+notifications from captured apps; individual templates can be disabled in Settings.
+The searchable source list shows app names, package names and template availability.

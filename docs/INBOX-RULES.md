@@ -1,7 +1,7 @@
 # Notification recording and ignore rules
 
 Enabled templates automatically record new notifications with a clear match.
-Capture consent and source parsing must be enabled. Entries and receipt settlement
+Capture consent must be enabled and the source must be captured. Entries and receipt settlement
 commit together in the ledger transaction. Replayed delivery does not book twice.
 
 Possible duplicates, conflicting templates, summary,
@@ -14,7 +14,7 @@ from that app, including older versions when an app reuses its notification. Cle
 matches are booked immediately, even when new notification capture is paused.
 Saved items, individually ignored, rule-ignored,
 app-ignored and expired items are excluded. Possible duplicates remain pending
-for review. Disable a template or source parsing to pause future automatic
+for review. Disable a template to pause its future automatic
 recording. Existing entries stay editable and unchanged.
 Saved receipts retain the template ID/revision after retained raw content expires.
 

@@ -314,6 +314,20 @@ class TemplateStoreTest {
         assertTrue(store.sources.first().single().parsingEnabled)
         assertFalse(definition().hasSameContent(definition().copy(kind = EntryKind.INCOME)))
     }
+    @Test fun capturedSourcesRunEnabledTemplatesEvenWithLegacyParsingDisabled() = runBlocking {
+        enableCapture()
+        store.execute(LedgerCommand.PutTemplate(definition()))
+        val source = store.sources.first().single()
+        assertTrue(store.execute(LedgerCommand.SetParsingSource(source.sourcePackage, false, source.revision)).applied)
+        assertFalse(store.sources.first().single().parsingEnabled)
+        val item = capture("legacy-disabled-parsing")
+        assertEquals(InboxStatus.SAVED, item.status)
+        assertEquals(1, store.entries.first().size)
+        val current = store.sources.first().single()
+        assertTrue(store.execute(LedgerCommand.SetIgnoredSource(current.sourcePackage, true, current.revision)).applied)
+        assertTrue(store.execute(LedgerCommand.CaptureNotification(payload("ignored-source"))).applied)
+        assertEquals(1, store.entries.first().size)
+    }
     @Test fun savedAssumptionKeepsCompactTemplateVersionAfterRawAndDerivedDraftExpire() = runBlocking {
         enableCapture(); store.execute(LedgerCommand.PutTemplate(definition()))
         val ready = capture("saved-assumption")

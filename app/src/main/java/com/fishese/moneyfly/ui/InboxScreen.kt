@@ -18,7 +18,12 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fishese.moneyfly.R
@@ -389,9 +394,10 @@ internal fun NotificationContent(item: InboxItem, expanded: Boolean) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun SourceSettings(sources: List<SourcePreference>, sourceName: (String) -> String = { it }, execute: (LedgerCommand) -> Unit) {
+internal fun SourceSettings(sources: List<SourcePreference>, templates: List<TemplateDefinition> = emptyList(), sourceName: (String) -> String = { it }, execute: (LedgerCommand) -> Unit) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     var filter by rememberSaveable { mutableStateOf("all") }
+    var query by rememberSaveable { mutableStateOf("") }
     OutlinedButton(onClick = { expanded = !expanded }, modifier = Modifier.testTag("source_settings")) { Text(stringResource(R.string.notification_sources)) }
     if (expanded) {
         Text(stringResource(R.string.source_settings_explanation), style = MaterialTheme.typography.bodySmall)
@@ -401,22 +407,41 @@ internal fun SourceSettings(sources: List<SourcePreference>, sourceName: (String
                 FilterChip(selected = filter == value, onClick = { filter = value }, label = { Text(stringResource(label)) }, modifier = Modifier.testTag("source_filter_$value"))
             }
         }
-        val shown = sources.filter { filter == "all" || (filter == "captured" && !it.ignored) || (filter == "ignored" && it.ignored) }
-            .sortedWith(compareBy<SourcePreference> { it.ignored }.thenBy { sourceName(it.sourcePackage).lowercase(java.util.Locale.ROOT) }.thenBy { it.sourcePackage })
+        OutlinedTextField(query, { query = it }, singleLine = true, label = { Text(stringResource(R.string.source_search)) },
+            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).testTag("source_search"),
+            trailingIcon = if (query.isNotEmpty()) { { IconButton(onClick = { query = "" }, modifier = Modifier.testTag("source_clear_search")) { Icon(Icons.Default.Close, stringResource(R.string.journal_clear_search)) } } } else null)
+        // Keep rows in place after a toggle; otherwise the captured-first sort makes other switches appear to move.
+        val order = remember(expanded, sources.map { it.sourcePackage }.toSet()) {
+            sources.sortedWith(compareBy<SourcePreference> { it.ignored }.thenBy { sourceName(it.sourcePackage).lowercase(java.util.Locale.ROOT) }.thenBy { it.sourcePackage })
+                .mapIndexed { index, source -> source.sourcePackage to index }.toMap()
+        }
+        val shown = sources.filter { (filter == "all" || (filter == "captured" && !it.ignored) || (filter == "ignored" && it.ignored)) &&
+            (query.isBlank() || it.sourcePackage.contains(query.trim(), ignoreCase = true) || sourceName(it.sourcePackage).contains(query.trim(), ignoreCase = true)) }
+            .sortedBy { order[it.sourcePackage] ?: Int.MAX_VALUE }
         if (shown.isEmpty() && sources.isNotEmpty()) Text(stringResource(R.string.source_filter_empty), style = MaterialTheme.typography.bodySmall)
-        shown.forEach { source ->
+        shown.forEach { source -> key(source.sourcePackage) {
             val name = sourceName(source.sourcePackage).ifBlank { source.sourcePackage }
             HorizontalDivider(Modifier.padding(top = 8.dp))
-            Text(if (name == source.sourcePackage) name else "$name [${source.sourcePackage}]", style = MaterialTheme.typography.titleSmall)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                Text(stringResource(R.string.source_capture_toggle), Modifier.weight(1f))
-                Switch(checked = !source.ignored, onCheckedChange = { execute(LedgerCommand.SetIgnoredSource(source.sourcePackage, !it, source.revision)) }, modifier = Modifier.testTag("restore_source_${source.sourcePackage}"))
+            val sourceTemplates = templates.filter { it.sourcePackage == source.sourcePackage }
+            val status = when {
+                sourceTemplates.any { it.enabled } -> R.string.source_template_available
+                sourceTemplates.isNotEmpty() -> R.string.source_template_disabled
+                else -> R.string.source_no_template
             }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                Text(stringResource(R.string.parsing_source), Modifier.weight(1f))
-                Switch(checked = source.parsingEnabled, onCheckedChange = { execute(LedgerCommand.SetParsingSource(source.sourcePackage, it, source.revision)) }, enabled = !source.ignored, modifier = Modifier.testTag("parse_source_${source.sourcePackage}"))
+            val captureLabel = stringResource(R.string.source_capture_accessibility, name)
+            Row(Modifier.fillMaxWidth().heightIn(min = 64.dp).testTag("source_row_${source.sourcePackage}"), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    val packageStyle = SpanStyle(fontSize = MaterialTheme.typography.bodySmall.fontSize, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(buildAnnotatedString {
+                        append(name)
+                        if (name != source.sourcePackage) withStyle(packageStyle) { append(" [${source.sourcePackage}]") }
+                    }, style = MaterialTheme.typography.titleSmall)
+                    Text(stringResource(status), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Switch(checked = !source.ignored, onCheckedChange = { execute(LedgerCommand.SetIgnoredSource(source.sourcePackage, !it, source.revision)) },
+                    modifier = Modifier.testTag("restore_source_${source.sourcePackage}").semantics { contentDescription = captureLabel })
             }
-        }
+        } }
     }
 }
 

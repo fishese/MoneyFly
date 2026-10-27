@@ -73,7 +73,11 @@ internal class TemplateWriter(private val dao: TemplateDao, private val inbox: I
     suspend fun freeze(row: ReceiptRow, payload: NotificationPayload, selectedTemplate: TemplateDefinition? = null): RecognitionResult {
         val result = when {
             selectedTemplate != null -> TemplateEngine.recognize(payload, listOf(selectedTemplate.copy(enabled = true)))
-            inbox.source(row.sourcePackage)?.parsingEnabled == true -> TemplateEngine.recognize(payload, dao.current().map { TemplateCodec.decode(it.definition) })
+            inbox.source(row.sourcePackage)?.ignored != true -> {
+                val definitions = dao.current().map { TemplateCodec.decode(it.definition) }
+                if (definitions.any { it.enabled && it.sourcePackage == row.sourcePackage }) TemplateEngine.recognize(payload, definitions)
+                else RecognitionResult(RecognitionStatus.NO_MATCH)
+            }
             else -> RecognitionResult(RecognitionStatus.NO_MATCH)
         }
         // Applying an unrelated template must not erase a useful preview from another template.

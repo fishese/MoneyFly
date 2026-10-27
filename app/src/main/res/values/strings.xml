@@ -65,7 +65,12 @@
     <string name="observed_time">Captured: %1$s</string>
     <string name="content_revision">Content revision: %1$d</string>
     <string name="notification_sources">Notification sources</string>
-    <string name="source_settings_explanation">Capture controls whether an app adds notifications to Inbox. Template parsing controls whether enabled templates run on captured notifications. Either can be changed independently; existing entries stay unchanged.</string>
+    <string name="source_settings_explanation">Choose which apps can add notifications to Inbox. Enabled templates run automatically for captured apps.</string>
+    <string name="source_template_available">Template available</string>
+    <string name="source_template_disabled">Templates disabled</string>
+    <string name="source_no_template">No template</string>
+    <string name="source_capture_accessibility">Capture notifications from %1$s</string>
+    <string name="source_search">Search apps or packages</string>
     <string name="no_sources">Sources appear after notifications are captured.</string>
     <string name="restore_app">Restore app</string>
     <string name="parsing_source">Allow enabled template parsing</string>
