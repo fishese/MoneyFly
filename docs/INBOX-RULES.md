@@ -64,3 +64,25 @@ Reports survive operation replay. Applying a nonmatching template preserves the
 preview and reason produced by another template. Notification revision alone does
 not stop a retained purchase from being recorded. Normal financial duplicate checks
 still apply, including protection against recreating a related deleted purchase.
+
+## Recurring purchases and duplicate review
+
+Android's notification key identifies an app's notification slot, not a bank or
+merchant transaction reference. An app can reuse one key for unrelated purchases.
+MoneyFly hashes the package, Android user and key to track the active slot, and
+hashes posting time plus visible content to recognize exact repeated deliveries.
+A new posting time or changed content creates another retained revision.
+
+Financial similarity only triggers review within 15 minutes of the entry time:
+same amount, currency, direction, normalized merchant and compatible account.
+Missing merchants use a conservative amount/currency/direction check in the same
+15-minute window. Related deleted purchases use that window too. Daily commutes
+and morning/evening rides can therefore record automatically with the same fare,
+merchant and Android notification key. No per-day limit is imposed.
+
+Notification posting time is used when a template cannot extract transaction time.
+An identical purchase reposted with a new timestamp more than 15 minutes later can
+therefore look new; this is a heuristic, not transaction-reference verification.
+Exact repeated notification snapshots are still suppressed independently of this
+window. Existing saved entries are unchanged. Apply a template to existing messages
+to retry retained pending items under the current policy.

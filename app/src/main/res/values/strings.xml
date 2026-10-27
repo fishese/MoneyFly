@@ -48,8 +48,8 @@
     <string name="saved_entry_unavailable">The linked entry is no longer available.</string>
     <string name="restore_item">Restore this item</string>
     <string name="removed_entry_explanation">The saved entry was deleted. Reposted notifications will not recreate it.</string>
-    <string name="updated_receipt_decision">This app updated or reused its notification. Review this purchase before recording it separately.</string>
-    <string name="possible_duplicate">A related notification already has an entry. Review the candidates before recording another purchase.</string>
+    <string name="updated_receipt_decision">This app reused a notification key. That does not identify a purchase. Review the message or apply a matching template to record it.</string>
+    <string name="possible_duplicate">A similar entry with the same amount and merchant exists within 15 minutes. Review it before recording another purchase.</string>
     <string name="link_existing">Link to an existing entry</string>
     <string name="separate_purchase">Record as a separate purchase</string>
     <string name="record_entry">Record entry</string>

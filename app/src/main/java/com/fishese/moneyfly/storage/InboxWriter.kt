@@ -165,7 +165,7 @@ internal class InboxWriter(private val dao: InboxDao, private val ledger: Ledger
                     entry.deleted && other.currency == draft.currency && other.kind == draft.kind &&
                         java.math.BigDecimal(other.amount).compareTo(java.math.BigDecimal(draft.amount)) == 0 &&
                         Categorization.normalize(other.canonicalMerchant ?: other.merchant) == Categorization.normalize(draft.canonicalMerchant ?: draft.merchant) &&
-                        Duration.between(other.occurredAt, draft.occurredAt).abs() <= Duration.ofDays(2)
+                        Duration.between(other.occurredAt, draft.occurredAt).abs() <= POSSIBLE_DUPLICATE_WINDOW
                 }
                 if (deletedPurchase) {
                     templates.requireReview(row, recognized, "A related entry was deleted. Review before creating another entry.")
@@ -176,7 +176,7 @@ internal class InboxWriter(private val dao: InboxDao, private val ledger: Ledger
                     entries.any { other -> other.draft.currency == draft.currency && other.draft.kind == draft.kind &&
                         java.math.BigDecimal(other.draft.amount).compareTo(java.math.BigDecimal(draft.amount)) == 0 &&
                         (draft.merchant.isBlank() || other.draft.merchant.isBlank()) &&
-                        Duration.between(other.draft.occurredAt, draft.occurredAt).abs() <= Duration.ofDays(2) }
+                        Duration.between(other.draft.occurredAt, draft.occurredAt).abs() <= POSSIBLE_DUPLICATE_WINDOW }
                 if (possibleDuplicate) templates.requireReview(row, recognized, "A possible duplicate exists. Review before saving another entry.")
                 else {
                     val entry = LedgerEntry("capture:${row.id}", 1, draft, false, now, now, operationId)

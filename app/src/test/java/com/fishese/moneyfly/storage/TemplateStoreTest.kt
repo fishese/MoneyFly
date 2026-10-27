@@ -65,6 +65,56 @@ class TemplateStoreTest {
         assertTrue(store.execute(command).replayed)
     }
 
+    @Test fun recurringFareAutomaticallyRecordsAcrossDaysAndForEveningRideOnReusedSlot() = runBlocking {
+        enableCapture(); store.execute(LedgerCommand.PutTemplate(definition()))
+        assertEquals(InboxStatus.SAVED, capture("recurring-slot").status)
+        now = now.plusSeconds(86400)
+        assertEquals(InboxStatus.SAVED, capture("recurring-slot").status)
+        now = now.plusSeconds(8 * 3600)
+        assertEquals(InboxStatus.SAVED, capture("recurring-slot").status)
+        assertEquals(3, store.entries.first().size)
+        // Re-delivery of the exact snapshot stays idempotent despite the relaxed financial window.
+        capture("recurring-slot")
+        assertEquals(3, store.entries.first().size)
+        now = now.plusSeconds(60)
+        assertEquals(InboxStatus.REVIEW_NEEDED, capture("recurring-slot").status)
+        assertEquals(3, store.entries.first().size)
+    }
+
+    @Test fun applyExistingRecordsDailyFareButKeepsNearbyRepostForReview() = runBlocking {
+        enableCapture(); capture("recurring-backfill")
+        now = now.plusSeconds(86400); capture("recurring-backfill")
+        now = now.plusSeconds(60); capture("recurring-backfill")
+        store.execute(LedgerCommand.PutTemplate(definition().copy(enabled = false)))
+        val result = store.execute(LedgerCommand.ApplyTemplateToPending("format", 1))
+        assertEquals(TemplateApplyReport(3, 3, 2, 1, 0), result.templateReport)
+        assertEquals(2, store.entries.first().size)
+    }
+
+    @Test fun deletedFareDoesNotBlockNextDaysRideButStillProtectsNearbyRepost() = runBlocking {
+        enableCapture(); store.execute(LedgerCommand.PutTemplate(definition()))
+        capture("deleted-recurring")
+        val saved = store.entries.first().single()
+        store.execute(LedgerCommand.Delete(saved.id, saved.revision))
+        now = now.plusSeconds(60)
+        assertEquals(InboxStatus.REVIEW_NEEDED, capture("deleted-recurring").status)
+        now = now.plusSeconds(86400)
+        assertEquals(InboxStatus.SAVED, capture("deleted-recurring").status)
+        assertEquals(1, store.entries.first().size)
+    }
+
+    @Test fun missingMerchantFallbackAlsoAllowsDailyPurchases() = runBlocking {
+        enableCapture()
+        store.execute(LedgerCommand.PutTemplate(definition().copy(
+            patterns = listOf(TemplateEngine.parsePattern(MessageField.BODY, "Paid {amount} at SYNTHETIC SHOP.")))))
+        assertEquals(InboxStatus.SAVED, capture("unknown-merchant").status)
+        now = now.plusSeconds(60)
+        assertEquals(InboxStatus.REVIEW_NEEDED, capture("unknown-merchant").status)
+        now = now.plusSeconds(86400)
+        assertEquals(InboxStatus.SAVED, capture("unknown-merchant").status)
+        assertEquals(2, store.entries.first().size)
+    }
+
     @Test fun ignoresAndUnclearMatchesNeverAutomaticallySave() = runBlocking {
         enableCapture(); store.execute(LedgerCommand.PutTemplate(definition()))
         store.execute(LedgerCommand.PutIgnoreRule(IgnoreRule("ignore", "Synthetic ignore", "invalid.synthetic", MessageField.TITLE, "Synthetic*")))

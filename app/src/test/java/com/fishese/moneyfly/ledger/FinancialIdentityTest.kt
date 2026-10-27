@@ -40,4 +40,14 @@ class FinancialIdentityTest {
             entry("other-currency", draft.copy(currency = "USD")), entry("distant", draft.copy(occurredAt = draft.occurredAt.minusSeconds(3 * 86400))))
         assertEquals(listOf("same", "unknown-account"), possibleDuplicateEntries(draft, entries).map { it.id })
     }
+
+    @Test fun duplicateWindowHasInclusiveBoundaryAndDoesNotCatchRecurringPurchases() {
+        val draft = EntryDraft("18.20", occurredAt = evidence.eventTime, merchant = "Synthetic transit")
+        fun entry(id: String, seconds: Long) = LedgerEntry(id, 1, draft.copy(occurredAt = draft.occurredAt.plusSeconds(seconds)),
+            false, evidence.eventTime, evidence.eventTime, "synthetic-operation")
+        val entries = listOf(entry("earlier-boundary", -900), entry("later-boundary", 900),
+            entry("outside-earlier", -901), entry("outside-later", 901),
+            entry("evening", 8 * 3600), entry("yesterday", -86400), entry("tomorrow", 86400))
+        assertEquals(listOf("earlier-boundary", "later-boundary"), possibleDuplicateEntries(draft, entries).map { it.id })
+    }
 }

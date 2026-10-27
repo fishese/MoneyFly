@@ -25,6 +25,9 @@ object FinancialIdentity {
     }
 }
 
+/** Notification updates usually arrive close together; recurring purchases are independent events. */
+val POSSIBLE_DUPLICATE_WINDOW: java.time.Duration = java.time.Duration.ofMinutes(15)
+
 /** Review suggestions only. A match never authorizes linking or saving. */
 fun possibleDuplicateEntries(draft: EntryDraft, entries: List<LedgerEntry>): List<LedgerEntry> {
     val amount = try { java.math.BigDecimal(Money.normalize(draft.amount, draft.currency)) } catch (_: IllegalArgumentException) { return emptyList() }
@@ -36,6 +39,6 @@ fun possibleDuplicateEntries(draft: EntryDraft, entries: List<LedgerEntry>): Lis
             java.math.BigDecimal(other.amount).compareTo(amount) == 0 &&
             Categorization.normalize(other.canonicalMerchant ?: other.merchant) == merchant &&
             (draft.accountId == null || other.accountId == null || draft.accountId == other.accountId) &&
-            java.time.Duration.between(other.occurredAt, draft.occurredAt).abs() <= java.time.Duration.ofDays(2)
+            java.time.Duration.between(other.occurredAt, draft.occurredAt).abs() <= POSSIBLE_DUPLICATE_WINDOW
     }.sortedBy { it.id }
 }

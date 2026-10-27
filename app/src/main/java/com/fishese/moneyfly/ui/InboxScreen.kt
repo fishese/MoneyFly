@@ -278,7 +278,8 @@ private fun ReceiptCard(item: InboxItem, sourceName: String, sourceIgnored: Bool
     var expanded by rememberSaveable(item.id) { mutableStateOf(false) }
     var more by rememberSaveable(item.id) { mutableStateOf(false) }
     var chooseDuplicate by rememberSaveable(item.id) { mutableStateOf(false) }
-    val candidateIds = (item.relatedEntryIds + (item.draft?.let { possibleDuplicateEntries(it, entries).map { entry -> entry.id } } ?: emptyList())).distinct()
+    val duplicateIds = item.draft?.let { possibleDuplicateEntries(it, entries).map { entry -> entry.id } }.orEmpty()
+    val candidateIds = (item.relatedEntryIds + duplicateIds).distinct()
     var targetId by rememberSaveable(item.id) { mutableStateOf(candidateIds.firstOrNull() ?: entries.firstOrNull { !it.deleted }?.id.orEmpty()) }
     var showAllEntries by rememberSaveable(item.id) { mutableStateOf(candidateIds.isEmpty()) }
     val saved = item.status == InboxStatus.SAVED || item.status == InboxStatus.LINKED_DUPLICATE
@@ -323,7 +324,7 @@ private fun ReceiptCard(item: InboxItem, sourceName: String, sourceIgnored: Bool
                 Text(stringResource(R.string.removed_entry_explanation))
             } else {
                 if (needsDecision) {
-                    Text(stringResource(if (item.requiresRevisionDecision) R.string.updated_receipt_decision else R.string.possible_duplicate), color = MaterialTheme.colorScheme.primary)
+                    Text(stringResource(if (duplicateIds.isNotEmpty()) R.string.possible_duplicate else R.string.updated_receipt_decision), color = MaterialTheme.colorScheme.primary)
                     OutlinedButton(onClick = { record(item, true) }, modifier = Modifier.testTag("record_${item.id}")) { Text(stringResource(R.string.separate_purchase)) }
                 } else if (item.status == InboxStatus.READY && item.draft != null) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

@@ -48,8 +48,8 @@
     <string name="saved_entry_unavailable">連結的記錄已無法使用。</string>
     <string name="restore_item">還原此項目</string>
     <string name="removed_entry_explanation">已儲存的記錄已被刪除。通知再次發出時不會重新建立記錄。</string>
-    <string name="updated_receipt_decision">此應用程式更新或重用了通知。請檢查這筆交易，再決定是否獨立記錄。</string>
-    <string name="possible_duplicate">相關通知已有記錄。請先檢視候選記錄，再新增另一筆交易。</string>
+    <string name="updated_receipt_decision">此應用程式重用了通知識別碼，這並非交易識別碼。請檢查訊息，或套用符合的範本來記錄。</string>
+    <string name="possible_duplicate">15 分鐘內已有相同金額及商戶的類似記錄。請先檢查，再新增另一筆交易。</string>
     <string name="link_existing">連結現有記錄</string>
     <string name="separate_purchase">記錄為另一筆交易</string>
     <string name="record_entry">記帳</string>
