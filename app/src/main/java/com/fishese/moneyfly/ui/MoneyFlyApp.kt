@@ -151,7 +151,7 @@ fun MoneyFlyApp(store: LedgerStore, captureController: CaptureController? = null
             topBar = {
                 TopAppBar(title = {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Icon(painterResource(R.drawable.ic_moneyfly), null, Modifier.size(30.dp), tint = Color.Unspecified)
+                        Icon(painterResource(R.drawable.moneyfly_art), null, Modifier.size(30.dp), tint = Color.Unspecified)
                         Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleLarge)
                     }
                 }, colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background), actions = {
@@ -187,7 +187,11 @@ fun MoneyFlyApp(store: LedgerStore, captureController: CaptureController? = null
                     bulkCategory = { bulkSnapshot = entries.filter { it.id in selectedIds }; pickerMode = "bulk-category" },
                     bulkAccount = { bulkSnapshot = entries.filter { it.id in selectedIds }; pickerMode = "bulk-account" },
                     bulkRemove = { bulkSnapshot = entries.filter { it.id in selectedIds }; confirmBulkRemove = true },
-                    swipe = { entry, action -> swipeEntry = entry; swipeAction = action }) { editorId = it.id; editingRevision = it.revision }
+                    swipe = { entry, action ->
+                        swipeEntry = entry
+                        if (action == TransactionAction.CATEGORY) { swipeAction = null; pickerMode = "single-category" }
+                        else swipeAction = action
+                    }) { editorId = it.id; editingRevision = it.revision }
                 1 -> InboxScreen(inboxStore, captureController, inbox, sources, entries, Modifier.padding(padding), templates.isNotEmpty(), execute = { command, applied -> run(command, onApplied = applied) },
                     record = { receipt, separate -> receiptId = receipt.id; receiptRevision = receipt.revision; separatePurchase = separate },
                     viewEntry = { entry -> editorId = entry.id; editingRevision = entry.revision }, createTemplate = { templateReceiptId = it.id })
@@ -231,10 +235,9 @@ fun MoneyFlyApp(store: LedgerStore, captureController: CaptureController? = null
             })
         }
         val actionEntry = swipeEntry
-        if (actionEntry != null && swipeAction != null) SwipeActionSheet(stringResource(if (swipeAction == TransactionAction.CATEGORY) R.string.category else R.string.account), dismiss = { swipeAction = null; swipeEntry = null }) {
-            val prefix = if (swipeAction == TransactionAction.CATEGORY) "category" else "account"
-            TextButton(onClick = { pickerMode = "single-$prefix"; swipeAction = null }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("swipe_assign_$prefix")) { Text(stringResource(if (prefix == "category") R.string.assign_category else R.string.assign_account)) }
-            TextButton(onClick = { pickerMode = "rule-$prefix"; swipeAction = null }, enabled = if (prefix == "category") actionEntry.draft.merchant.isNotBlank() else actionEntry.draft.merchant.isNotBlank() || actionEntry.draft.sourcePackage != null, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("swipe_rule_$prefix")) { Text(stringResource(if (prefix == "category") R.string.create_category_rule else R.string.create_account_rule)) }
+        if (actionEntry != null && swipeAction == TransactionAction.ACCOUNT) SwipeActionSheet(stringResource(R.string.account), dismiss = { swipeAction = null; swipeEntry = null }) {
+            TextButton(onClick = { pickerMode = "single-account"; swipeAction = null }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("swipe_assign_account")) { Text(stringResource(R.string.assign_account)) }
+            TextButton(onClick = { pickerMode = "rule-account"; swipeAction = null }, enabled = actionEntry.draft.merchant.isNotBlank() || actionEntry.draft.sourcePackage != null, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("swipe_rule_account")) { Text(stringResource(R.string.create_account_rule)) }
         }
         pickerMode?.let { mode ->
             val categoryPicker = mode.endsWith("category")
@@ -242,20 +245,21 @@ fun MoneyFlyApp(store: LedgerStore, captureController: CaptureController? = null
                 if (categoryPicker) categories.map { it.id to it.name } else accounts.map { it.id to listOfNotNull(it.icon, it.name).joinToString(" ") },
                 stringResource(if (categoryPicker) R.string.uncategorized else R.string.unassigned),
                 if (mode.startsWith("single") || mode.startsWith("rule")) (if (categoryPicker) actionEntry?.draft?.categoryId else actionEntry?.draft?.accountId).orEmpty() else "",
-                dismiss = { pickerMode = null; swipeEntry = null }, categoryStore = if (categoryPicker) store else null) { chosen ->
+                dismiss = { pickerMode = null; swipeEntry = null }, categoryStore = if (categoryPicker) store else null,
+                confirmCategory = mode == "single-category",
+                createVendorRule = if (mode == "single-category" && actionEntry?.draft?.merchant?.isNotBlank() == true) { chosen -> pickerMode = null; ruleCategory = chosen } else null) { chosen ->
                 pickerMode = null
                 when (mode) {
                     "bulk-category" -> applyBulk(bulkSnapshot, "category", chosen.ifEmpty { null })
                     "bulk-account" -> applyBulk(bulkSnapshot, "account", chosen.ifEmpty { null })
                     "single-category" -> actionEntry?.let { run(LedgerCommand.Edit(it.id, it.revision, it.draft.copy(categoryId = chosen.ifEmpty { null }, categoryOrigin = if (chosen.isEmpty()) CategoryOrigin.UNASSIGNED else CategoryOrigin.EXPLICIT)), true) }
                     "single-account" -> actionEntry?.let { run(LedgerCommand.Edit(it.id, it.revision, it.draft.copy(accountId = chosen.ifEmpty { null })), true) }
-                    "rule-category" -> if (chosen.isNotEmpty()) ruleCategory = chosen else swipeEntry = null
                     "rule-account" -> if (chosen.isNotEmpty()) ruleAccount = chosen else swipeEntry = null
                 }
                 if (mode.startsWith("single")) swipeEntry = null
             }
         }
-        if (actionEntry != null && ruleCategory != null) MerchantRuleDialog(store, rules, actionEntry.draft.canonicalMerchant ?: actionEntry.draft.merchant, ruleCategory!!, categories.find { it.id == ruleCategory }?.name.orEmpty()) { ruleCategory = null; swipeEntry = null }
+        if (actionEntry != null && ruleCategory != null) MerchantRuleDialog(store, rules, actionEntry.draft.canonicalMerchant?.takeIf { it.isNotBlank() } ?: actionEntry.draft.merchant, ruleCategory!!, categories.find { it.id == ruleCategory }?.name.orEmpty(), targetEntry = actionEntry) { ruleCategory = null; swipeEntry = null }
         if (actionEntry != null && ruleAccount != null) AccountRuleDialog(store, accountRules, actionEntry, ruleAccount!!, accounts.find { it.id == ruleAccount }?.name.orEmpty()) { ruleAccount = null; swipeEntry = null }
         if (confirmBulkRemove) AlertDialog(onDismissRequest = { confirmBulkRemove = false }, title = { Text(stringResource(R.string.bulk_remove_title)) }, text = { Text(stringResource(R.string.bulk_remove_confirm, bulkSnapshot.size)) },
             confirmButton = { TextButton(onClick = { confirmBulkRemove = false; applyBulk(bulkSnapshot, "delete") }, modifier = Modifier.testTag("confirm_bulk_remove")) { Text(stringResource(R.string.delete)) } },

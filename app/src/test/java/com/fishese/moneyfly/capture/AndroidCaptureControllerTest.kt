@@ -2,6 +2,8 @@ package com.fishese.moneyfly.capture
 
 import android.app.Notification
 import android.content.Context
+import android.content.pm.ApplicationInfo
+import android.content.pm.PackageInfo
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import androidx.test.core.app.ApplicationProvider
@@ -15,6 +17,7 @@ import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -22,6 +25,16 @@ import org.robolectric.annotation.Config
 @Config(sdk = [35])
 class AndroidCaptureControllerTest {
     private val context: Context get() = ApplicationProvider.getApplicationContext()
+
+    @Test fun sourceLabelsCanBecomeAvailableAfterAnEarlierLookup() = runTest {
+        val store = CaptureStore()
+        val controller = AndroidCaptureController(context, store, store, backgroundScope) { true }
+        val packageName = "synthetic.late.install"
+        assertEquals(packageName, controller.sourceName(packageName))
+        val info = ApplicationInfo().apply { this.packageName = packageName; nonLocalizedLabel = "Synthetic App" }
+        shadowOf(context.packageManager).installPackage(PackageInfo().apply { this.packageName = packageName; applicationInfo = info })
+        assertEquals("Synthetic App", controller.sourceName(packageName))
+    }
 
     @Test fun consentGatesAdaptationAndPausingDiscardsQueuedEvents() = runTest {
         val store = CaptureStore()

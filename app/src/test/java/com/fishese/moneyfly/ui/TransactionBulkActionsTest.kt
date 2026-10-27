@@ -57,10 +57,61 @@ class TransactionBulkActionsTest {
         compose.onNodeWithTag("transaction_swipe_one", useUnmergedTree = true).performTouchInput { swipeLeft() }
         compose.waitForIdle()
         compose.runOnIdle { assertTrue(store.commands.isEmpty()) }
-        compose.onNodeWithTag("swipe_assign_category", useUnmergedTree = true).performClick()
         compose.onNodeWithTag("editor_label_travel", useUnmergedTree = true).performClick()
+        compose.runOnIdle { assertTrue(store.commands.isEmpty()) }
+        compose.onNodeWithTag("category_save_entry", useUnmergedTree = true).performClick()
         compose.waitUntil { store.commands.any { it is LedgerCommand.Edit } }
         compose.runOnIdle { assertEquals("travel", store.commands.filterIsInstance<LedgerCommand.Edit>().single().draft.categoryId) }
+    }
+
+    @Test fun categorySwipeCanSaveEntryAndCreateVendorRule() {
+        val store = Store()
+        store.entries.value = store.entries.value.map { if (it.id == "one") it.copy(draft = it.draft.copy(categoryId = "old", categoryOrigin = CategoryOrigin.EXPLICIT)) else it }
+        compose.setContent { MoneyFlyApp(store) }
+        centerRow("transaction_swipe_one")
+        compose.onNodeWithTag("transaction_swipe_one", useUnmergedTree = true).performTouchInput { swipeLeft() }
+        compose.onNodeWithTag("editor_label_travel", useUnmergedTree = true).performClick()
+        compose.onNodeWithTag("category_save_rule", useUnmergedTree = true).performClick()
+        compose.runOnIdle { assertTrue(store.commands.isEmpty()) }
+        compose.onNodeWithTag("confirm_merchant_rule", useUnmergedTree = true).performClick()
+        compose.waitUntil { store.commands.any { it is LedgerCommand.PutRule } }
+        compose.runOnIdle {
+            val edit = store.commands.filterIsInstance<LedgerCommand.Edit>().single()
+            val rule = store.commands.filterIsInstance<LedgerCommand.PutRule>().single().rule
+            assertEquals("one", edit.entryId); assertEquals("travel", edit.draft.categoryId)
+            assertEquals(CategoryOrigin.EXPLICIT, edit.draft.categoryOrigin)
+            assertEquals("Synthetic one", rule.literal); assertEquals("travel", rule.categoryId)
+        }
+    }
+
+    @Test fun categorySwipeDoesNotOfferRuleWithoutMerchantOrCategory() {
+        val store = Store()
+        store.entries.value = store.entries.value.map { if (it.id == "one") it.copy(draft = it.draft.copy(merchant = "")) else it }
+        compose.setContent { MoneyFlyApp(store) }
+        centerRow("transaction_swipe_one")
+        compose.onNodeWithTag("transaction_swipe_one", useUnmergedTree = true).performTouchInput { swipeLeft() }
+        compose.onNodeWithTag("category_save_rule", useUnmergedTree = true).assertIsNotEnabled()
+        compose.onNodeWithTag("editor_label_travel", useUnmergedTree = true).performClick()
+        compose.onNodeWithTag("category_save_rule", useUnmergedTree = true).assertIsNotEnabled()
+        compose.onNodeWithTag("category_save_entry", useUnmergedTree = true).performClick()
+        compose.waitUntil { store.commands.any { it is LedgerCommand.Edit } }
+        compose.runOnIdle { assertTrue(store.commands.none { it is LedgerCommand.PutRule }) }
+    }
+
+    @Test fun ruleFailureExplainsEntryWasSavedAndRetryDoesNotEditTwice() {
+        val store = Store().apply { failRule = true }
+        compose.setContent { MoneyFlyApp(store) }
+        centerRow("transaction_swipe_one")
+        compose.onNodeWithTag("transaction_swipe_one", useUnmergedTree = true).performTouchInput { swipeLeft() }
+        compose.onNodeWithTag("editor_label_travel", useUnmergedTree = true).performClick()
+        compose.onNodeWithTag("category_save_rule", useUnmergedTree = true).performScrollTo().performClick()
+        compose.onNodeWithTag("confirm_merchant_rule", useUnmergedTree = true).performClick()
+        compose.waitUntil { store.commands.any { it is LedgerCommand.PutRule } }
+        compose.onNodeWithText("The entry was updated, but the rule was not saved. Try again or check the rules in Settings.", useUnmergedTree = true).assertExists()
+        compose.runOnIdle { store.failRule = false }
+        compose.onNodeWithTag("confirm_merchant_rule", useUnmergedTree = true).performClick()
+        compose.waitUntil { store.commands.filterIsInstance<LedgerCommand.PutRule>().size == 2 }
+        compose.runOnIdle { assertEquals(1, store.commands.filterIsInstance<LedgerCommand.Edit>().size) }
     }
 
     @Test fun dividerStaysStillDuringPartialSwipe() {
@@ -154,6 +205,7 @@ class TransactionBulkActionsTest {
         override val accounts = MutableStateFlow(listOf(AccountLabel("card", "Card", AccountKind.CARD, 1)))
         override val aliases = MutableStateFlow(emptyList<MerchantAlias>())
         override val rules = MutableStateFlow(emptyList<CategoryRule>())
+        var failRule = false
         val commands = mutableListOf<LedgerCommand>()
         override suspend fun execute(command: LedgerCommand): CommandResult {
             commands += command
@@ -173,6 +225,7 @@ class TransactionBulkActionsTest {
                     CommandResult(CommandStatus.APPLIED, old.id, old.revision + 1)
                 }
                 is LedgerCommand.PutAccountRule -> CommandResult(CommandStatus.APPLIED, command.rule.id, 1)
+                is LedgerCommand.PutRule -> CommandResult(if (failRule) CommandStatus.INVALID else CommandStatus.APPLIED, command.rule.id, 1)
                 else -> CommandResult(CommandStatus.INVALID)
             }
         }

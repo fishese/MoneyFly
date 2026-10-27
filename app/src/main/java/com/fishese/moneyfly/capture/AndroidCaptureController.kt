@@ -42,12 +42,16 @@ class AndroidCaptureController(
     private val sourceNames = java.util.concurrent.ConcurrentHashMap<String, String>()
 
     @Suppress("DEPRECATION")
-    override fun sourceName(packageName: String): String = sourceNames.getOrPut(packageName) {
-        try {
+    override fun sourceName(packageName: String): String {
+        sourceNames[packageName]?.let { return it }
+        val label = try {
             // Look up only a source already present in the Inbox, never enumerate apps.
             val info = this.context.packageManager.getApplicationInfo(packageName, 0)
             this.context.packageManager.getApplicationLabel(info).toString().ifBlank { packageName }
         } catch (_: Exception) { packageName }
+        // An unavailable app may become visible or be installed later; don't cache failures.
+        if (label != packageName) sourceNames[packageName] = label
+        return label
     }
     private val refreshMutex = Mutex()
     @Volatile private var listener: NotificationListenerService? = null
@@ -77,6 +81,7 @@ class AndroidCaptureController(
     } catch (_: Exception) { false }
 
     override fun onForeground() {
+        sourceNames.clear()
         val granted = hasAccess()
         state.update { it.copy(accessGranted = granted, connected = granted && listener != null,
             problem = if (!granted) CaptureProblem.ACCESS_DENIED else if (listener == null) CaptureProblem.DISCONNECTED else it.problem?.takeUnless { p -> p == CaptureProblem.ACCESS_DENIED || p == CaptureProblem.DISCONNECTED }) }

@@ -1,6 +1,8 @@
 package com.fishese.moneyfly.ui
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -23,7 +25,8 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun EditorLabelPicker(title: String, options: List<Pair<String, String>>, emptyLabel: String, selected: String, dismiss: () -> Unit, categoryStore: LedgerStore? = null, choose: (String) -> Unit) {
+internal fun EditorLabelPicker(title: String, options: List<Pair<String, String>>, emptyLabel: String, selected: String, dismiss: () -> Unit, categoryStore: LedgerStore? = null,
+    confirmCategory: Boolean = false, createVendorRule: ((String) -> Unit)? = null, choose: (String) -> Unit) {
     var query by rememberSaveable { mutableStateOf("") }
     var pendingName by rememberSaveable { mutableStateOf<String?>(null) }
     var pendingId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -33,6 +36,8 @@ internal fun EditorLabelPicker(title: String, options: List<Pair<String, String>
     var error by remember { mutableStateOf<String?>(null) }
     var showCatalog by rememberSaveable { mutableStateOf(false) }
     var customFocusRequests by remember { mutableIntStateOf(0) }
+    var selectedCategory by rememberSaveable { mutableStateOf(selected) }
+    fun select(id: String) { if (confirmCategory) selectedCategory = id else choose(id) }
     val searchFocus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     LaunchedEffect(customFocusRequests) {
@@ -48,8 +53,9 @@ internal fun EditorLabelPicker(title: String, options: List<Pair<String, String>
     val editable = !busy && !retryLocked
     val canCreate = categoryStore != null && query.isNotBlank() && (options.map { it.second } + emptyLabel).none { Categorization.normalize(it) == Categorization.normalize(query) }
     val sheetState = rememberModalBottomSheetState(confirmValueChange = { !busy })
+    val sheetScroll = rememberScrollState()
     ModalBottomSheet(onDismissRequest = { if (!busy) dismiss() }, sheetState = sheetState) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+        Column(Modifier.fillMaxWidth().then(if (confirmCategory) Modifier.verticalScroll(sheetScroll) else Modifier).padding(horizontal = 20.dp)) {
             Text(title, style = MaterialTheme.typography.headlineSmall)
             OutlinedTextField(query, { query = it; pendingName = null; pendingId = null; pendingOperation = null; error = null }, enabled = editable, singleLine = true, label = { Text(stringResource(R.string.editor_search_labels)) }, modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp).focusRequester(searchFocus).testTag("editor_label_search"))
             if (categoryStore != null) TextButton(onClick = { showCatalog = true }, enabled = editable, modifier = Modifier.testTag("editor_more_categories")) { Text(stringResource(R.string.category_more)) }
@@ -65,7 +71,7 @@ internal fun EditorLabelPicker(title: String, options: List<Pair<String, String>
                     scope.launch {
                         try {
                             val result = store.execute(command)
-                            if (result.applied) choose(id) else {
+                            if (result.applied) select(id) else {
                                 error = failed; retryLocked = false
                                 pendingName = null; pendingId = null; pendingOperation = null
                             }
@@ -77,11 +83,11 @@ internal fun EditorLabelPicker(title: String, options: List<Pair<String, String>
             }
             val rows = (listOf("" to emptyLabel) + options).filter { query.isBlank() || it.second.contains(query.trim(), ignoreCase = true) }
             if (categoryStore != null && rows.isNotEmpty()) {
-                LazyVerticalGrid(columns = GridCells.Adaptive(120.dp), modifier = Modifier.fillMaxWidth().heightIn(max = 360.dp),
+                LazyVerticalGrid(columns = GridCells.Adaptive(120.dp), modifier = Modifier.fillMaxWidth().heightIn(max = if (confirmCategory) 220.dp else 360.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp),
                     contentPadding = PaddingValues(bottom = 24.dp)) {
                     items(rows, key = { it.first }) { (id, name) ->
-                        FilterChip(selected = id == selected, onClick = { choose(id) }, enabled = editable,
+                        FilterChip(selected = id == if (confirmCategory) selectedCategory else selected, onClick = { select(id) }, enabled = editable,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("editor_label_${id.ifEmpty { "none" }}"),
                             label = { Text(name) })
                     }
@@ -95,7 +101,17 @@ internal fun EditorLabelPicker(title: String, options: List<Pair<String, String>
                     }
                 }
             }
+            if (confirmCategory) {
+                Button(onClick = { choose(selectedCategory) }, enabled = editable, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("category_save_entry")) {
+                    Text(stringResource(R.string.category_save_entry))
+                }
+                OutlinedButton(onClick = { createVendorRule?.invoke(selectedCategory) }, enabled = editable && selectedCategory.isNotEmpty() && createVendorRule != null,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("category_save_rule")) {
+                    Text(stringResource(R.string.category_save_rule))
+                }
+                TextButton(onClick = dismiss, enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(stringResource(R.string.cancel)) }
+            }
         }
     }
-    if (showCatalog && categoryStore != null) ExpenseCategoryCatalogDialog(categoryStore, dismiss = { showCatalog = false }, customCategory = { showCatalog = false; customFocusRequests++ }, selectCategory = choose)
+    if (showCatalog && categoryStore != null) ExpenseCategoryCatalogDialog(categoryStore, dismiss = { showCatalog = false }, customCategory = { showCatalog = false; customFocusRequests++ }, selectCategory = { showCatalog = false; select(it) })
 }

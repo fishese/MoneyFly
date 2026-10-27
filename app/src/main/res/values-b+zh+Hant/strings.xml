@@ -181,6 +181,9 @@
     <string name="category_rule_replace">這會更新此商戶現有的精確配對規則。</string>
     <string name="category_rule_create_hint">只配對此商戶名稱，忽略大小寫和多餘空格；相符的未分類支出亦會分類。可在設定管理規則。</string>
     <string name="category_rule_failed">無法儲存規則。請重試或到設定檢查規則。</string>
+    <string name="category_rule_partial_failure">記錄已更新，但規則未能儲存。請重試或到設定檢查規則。</string>
+    <string name="category_save_entry">只儲存至此記錄</string>
+    <string name="category_save_rule">儲存並建立商戶規則</string>
     <string name="category_rule_save">儲存規則</string>
     <string name="category_apply_existing">分類現有支出</string>
     <string name="category_apply_confirm">要將分類規則套用至現有未分類支出嗎？有衝突及已有分類的記錄會被略過。</string>

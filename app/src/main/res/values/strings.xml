@@ -181,6 +181,9 @@
     <string name="category_rule_replace">This updates the existing exact-match rule for this merchant.</string>
     <string name="category_rule_create_hint">Only this merchant name matches, ignoring case and extra spaces. Matching uncategorized expenses will be categorized too. Manage rules in Settings.</string>
     <string name="category_rule_failed">Could not save this rule. Try again or check the rules in Settings.</string>
+    <string name="category_rule_partial_failure">The entry was updated, but the rule was not saved. Try again or check the rules in Settings.</string>
+    <string name="category_save_entry">Save for this entry</string>
+    <string name="category_save_rule">Save and create vendor rule</string>
     <string name="category_rule_save">Save rule</string>
     <string name="category_apply_existing">Categorize existing expenses</string>
     <string name="category_apply_confirm">Apply category rules to existing uncategorized expenses? Conflicting matches and expenses that already have a category are skipped.</string>
