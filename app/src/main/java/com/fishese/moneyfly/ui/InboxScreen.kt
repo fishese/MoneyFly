@@ -235,16 +235,14 @@ private fun PendingReceiptSwipe(
         return
     }
     key(item.id, item.revision) {
-        val state = rememberSwipeToDismissBoxState()
         var choices by remember { mutableStateOf<SwipeChoices?>(null) }
-        LaunchedEffect(state.currentValue) {
-            when (state.currentValue) {
-                SwipeToDismissBoxValue.EndToStart -> choices = SwipeChoices.IGNORE
-                SwipeToDismissBoxValue.StartToEnd -> choices = SwipeChoices.RECORD
-                else -> Unit
+        val state = rememberSwipeToDismissBoxState(confirmValueChange = { direction ->
+            when (direction) {
+                SwipeToDismissBoxValue.EndToStart -> { choices = SwipeChoices.IGNORE; false }
+                SwipeToDismissBoxValue.StartToEnd -> { choices = SwipeChoices.RECORD; false }
+                else -> true
             }
-            if (state.currentValue != SwipeToDismissBoxValue.Settled) state.reset()
-        }
+        })
         SwipeToDismissBox(state = state, modifier = Modifier.clip(MaterialTheme.shapes.medium).testTag("swipe_${item.id}"),
             backgroundContent = {
                 val ignoring = state.dismissDirection == SwipeToDismissBoxValue.EndToStart

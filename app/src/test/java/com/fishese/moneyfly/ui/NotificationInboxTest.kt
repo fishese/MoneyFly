@@ -103,6 +103,25 @@ class NotificationInboxTest {
         }
     }
 
+    @Test fun inboxCardReturnsToRestAfterSwipingInEitherDirection() {
+        val store = FakeInboxStore()
+        compose.setContent { MoneyFlyApp(store, FakeController()) }
+        compose.onNodeWithTag("destination_1", useUnmergedTree = true).performClick()
+        compose.onNodeWithTag("inbox_list").performScrollToNode(hasTestTag("swipe_receipt"))
+        val title = compose.onNodeWithText("Synthetic notification title", useUnmergedTree = true)
+        val initialX = title.fetchSemanticsNode().positionInRoot.x
+        for (left in listOf(true, false)) {
+            compose.onNodeWithTag("swipe_receipt", useUnmergedTree = true).performTouchInput {
+                if (left) swipeLeft() else swipeRight()
+            }
+            compose.waitForIdle()
+            compose.onNodeWithText("Cancel", useUnmergedTree = true).performClick()
+            compose.waitForIdle()
+            assertEquals(initialX, title.fetchSemanticsNode().positionInRoot.x, 1f)
+        }
+        compose.runOnIdle { assertTrue(store.commands.isEmpty()) }
+    }
+
     @Test fun summaryIgnoreIsAvailableWithoutPatternAndDefaultsToSameApp() {
         val store = FakeInboxStore()
         store.inbox.value = store.inbox.value.map { it.copy(payload = it.payload!!.copy(groupSummary = true)) }

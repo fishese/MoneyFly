@@ -69,6 +69,8 @@ class TransactionBulkActionsTest {
         centerRow("transaction_swipe_one")
         val divider = compose.onNodeWithTag("transaction_divider_one", useUnmergedTree = true)
         val initial = divider.fetchSemanticsNode().positionInRoot
+        val row = compose.onNodeWithTag("transaction_one", useUnmergedTree = true)
+        val initialRowX = row.fetchSemanticsNode().positionInRoot.x
         compose.onNodeWithTag("transaction_swipe_one", useUnmergedTree = true).performTouchInput {
             down(center)
             moveBy(Offset(-width * 0.2f, 0f))
@@ -77,7 +79,42 @@ class TransactionBulkActionsTest {
         assertEquals(initial.x, during.x, 0.5f)
         assertEquals(initial.y, during.y, 0.5f)
         compose.onNodeWithTag("transaction_swipe_one", useUnmergedTree = true).performTouchInput { up() }
+        compose.waitForIdle()
+        assertEquals(initialRowX, row.fetchSemanticsNode().positionInRoot.x, 1f)
         compose.runOnIdle { assertTrue(store.commands.isEmpty()) }
+    }
+
+    @Test fun transactionRowReturnsToRestAfterEitherSwipeAndSheetDismissal() {
+        val store = Store()
+        compose.setContent { MoneyFlyApp(store) }
+        centerRow("transaction_swipe_one")
+        val row = compose.onNodeWithTag("transaction_one", useUnmergedTree = true)
+        val initialX = row.fetchSemanticsNode().positionInRoot.x
+        for (left in listOf(true, false)) {
+            compose.onNodeWithTag("transaction_swipe_one", useUnmergedTree = true).performTouchInput {
+                if (left) swipeLeft() else swipeRight()
+            }
+            compose.waitForIdle()
+            compose.onNodeWithText("Cancel", useUnmergedTree = true).performClick()
+            compose.waitForIdle()
+            assertEquals(initialX, row.fetchSemanticsNode().positionInRoot.x, 1f)
+        }
+        compose.runOnIdle { assertTrue(store.commands.isEmpty()) }
+    }
+
+    @Test fun categoryPickerShowsMultiplePaddedChoicesPerRow() {
+        val store = Store()
+        var chosen = ""
+        compose.setContent {
+            EditorLabelPicker("Category", listOf("meals" to "Meals", "snacks" to "Snacks", "travel" to "Transportation"),
+                "Uncategorized", "", dismiss = {}, categoryStore = store) { chosen = it }
+        }
+        val first = compose.onNodeWithTag("editor_label_none", useUnmergedTree = true).fetchSemanticsNode()
+        val second = compose.onNodeWithTag("editor_label_meals", useUnmergedTree = true).fetchSemanticsNode()
+        assertEquals(first.positionInRoot.y, second.positionInRoot.y, 1f)
+        assertTrue(second.positionInRoot.x > first.positionInRoot.x + first.size.width)
+        compose.onNodeWithTag("editor_label_meals", useUnmergedTree = true).performClick()
+        compose.runOnIdle { assertEquals("meals", chosen) }
     }
 
     @Test fun transactionRowShowsAccountIconButNotAccountName() {

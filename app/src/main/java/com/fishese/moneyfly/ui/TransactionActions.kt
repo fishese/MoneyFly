@@ -22,14 +22,13 @@ internal enum class TransactionAction { CATEGORY, ACCOUNT }
 internal fun TransactionSwipe(entry: LedgerEntry, selecting: Boolean, onAction: (LedgerEntry, TransactionAction) -> Unit, content: @Composable () -> Unit) {
     if (selecting) { content(); return }
     key(entry.id, entry.revision) {
-        val state = rememberSwipeToDismissBoxState()
-        LaunchedEffect(state.currentValue) {
-            val direction = state.currentValue
-            if (direction != SwipeToDismissBoxValue.Settled) {
-                onAction(entry, if (direction == SwipeToDismissBoxValue.EndToStart) TransactionAction.CATEGORY else TransactionAction.ACCOUNT)
-                state.reset()
+        val currentOnAction by rememberUpdatedState(onAction)
+        val state = rememberSwipeToDismissBoxState(confirmValueChange = { direction ->
+            if (direction == SwipeToDismissBoxValue.Settled) true else {
+                currentOnAction(entry, if (direction == SwipeToDismissBoxValue.EndToStart) TransactionAction.CATEGORY else TransactionAction.ACCOUNT)
+                false // Reject dismissal; Material animates the row back to its settled anchor.
             }
-        }
+        })
         SwipeToDismissBox(state, modifier = Modifier.testTag("transaction_swipe_${entry.id}"), backgroundContent = {
             if (state.dismissDirection != SwipeToDismissBoxValue.Settled) {
                 val category = state.dismissDirection == SwipeToDismissBoxValue.EndToStart

@@ -3,6 +3,9 @@ package com.fishese.moneyfly.ui
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -72,8 +75,18 @@ internal fun EditorLabelPicker(title: String, options: List<Pair<String, String>
                 }) { Text(stringResource(if (busy) R.string.saving else R.string.editor_create_category, pendingName ?: query.trim())) }
                 Text(stringResource(R.string.editor_category_creation_hint), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(vertical = 8.dp))
             }
-            LazyColumn(Modifier.fillMaxWidth().heightIn(max = 360.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
-                val rows = (listOf("" to emptyLabel) + options).filter { query.isBlank() || it.second.contains(query.trim(), ignoreCase = true) }
+            val rows = (listOf("" to emptyLabel) + options).filter { query.isBlank() || it.second.contains(query.trim(), ignoreCase = true) }
+            if (categoryStore != null && rows.isNotEmpty()) {
+                LazyVerticalGrid(columns = GridCells.Adaptive(120.dp), modifier = Modifier.fillMaxWidth().heightIn(max = 360.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(bottom = 24.dp)) {
+                    items(rows, key = { it.first }) { (id, name) ->
+                        FilterChip(selected = id == selected, onClick = { choose(id) }, enabled = editable,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("editor_label_${id.ifEmpty { "none" }}"),
+                            label = { Text(name) })
+                    }
+                }
+            } else LazyColumn(Modifier.fillMaxWidth().heightIn(max = 360.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
                 if (rows.isEmpty()) item { Text(stringResource(R.string.editor_no_label_matches), Modifier.padding(vertical = 16.dp)) }
                 items(rows, key = { it.first }) { (id, name) ->
                     TextButton(onClick = { choose(id) }, enabled = editable, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("editor_label_${id.ifEmpty { "none" }}")) {
