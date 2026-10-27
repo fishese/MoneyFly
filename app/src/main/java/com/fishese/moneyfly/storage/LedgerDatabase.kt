@@ -29,6 +29,8 @@ data class AliasRow(@PrimaryKey val id: String, val spelling: String, val normal
 @Entity(tableName = "category_rules")
 data class RuleRow(@PrimaryKey val id: String, val field: String, val match: String, val literal: String,
     val categoryId: String, val priority: Int, val sourcePackage: String?, val accountId: String?, val revision: Long)
+@Entity(tableName = "account_rules")
+data class AccountRuleRow(@PrimaryKey val id: String, val merchant: String?, val sourcePackage: String?, val accountId: String, val revision: Long)
 @Entity(tableName = "operation_results")
 data class OperationRow(@PrimaryKey val id: String, val fingerprint: String, val result: String, val previousEntry: String?)
 @Entity(tableName = "retired_entities", primaryKeys = ["kind", "id"])
@@ -41,12 +43,15 @@ interface LedgerDao {
     @Query("SELECT * FROM account_labels ORDER BY name, id") fun accounts(): Flow<List<AccountRow>>
     @Query("SELECT * FROM merchant_aliases ORDER BY spelling, id") fun aliases(): Flow<List<AliasRow>>
     @Query("SELECT * FROM category_rules ORDER BY priority DESC, id") fun rules(): Flow<List<RuleRow>>
+    @Query("SELECT * FROM account_rules ORDER BY id") fun accountRules(): Flow<List<AccountRuleRow>>
     @Query("SELECT * FROM ledger_entries WHERE id = :id") suspend fun entry(id: String): EntryRow?
     @Query("SELECT * FROM categories WHERE id = :id") suspend fun category(id: String): CategoryRow?
     @Query("SELECT * FROM account_labels WHERE id = :id") suspend fun account(id: String): AccountRow?
     @Query("SELECT * FROM merchant_aliases WHERE id = :id") suspend fun alias(id: String): AliasRow?
     @Query("SELECT * FROM merchant_aliases WHERE normalized = :normalized AND id != :exceptId") suspend fun aliasWithSpelling(normalized: String, exceptId: String): AliasRow?
     @Query("SELECT * FROM category_rules WHERE id = :id") suspend fun rule(id: String): RuleRow?
+    @Query("SELECT * FROM account_rules WHERE id = :id") suspend fun accountRule(id: String): AccountRuleRow?
+    @Query("SELECT id FROM account_rules WHERE accountId = :id") suspend fun accountAssignmentRuleIds(id: String): List<String>
     @Query("SELECT * FROM operation_results WHERE id = :id") suspend fun operation(id: String): OperationRow?
     @Query("SELECT * FROM retired_entities WHERE kind = :kind AND id = :id") suspend fun retired(kind: String, id: String): RetiredEntityRow?
     @Query("SELECT id FROM category_rules WHERE categoryId = :id") suspend fun categoryRuleIds(id: String): List<String>
@@ -56,6 +61,7 @@ interface LedgerDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putAccount(row: AccountRow)
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putAlias(row: AliasRow)
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putRule(row: RuleRow)
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putAccountRule(row: AccountRuleRow)
     @Insert suspend fun putOperation(row: OperationRow)
     @Insert suspend fun retire(row: RetiredEntityRow)
     @Query("DELETE FROM categories WHERE id = :id") suspend fun deleteCategory(id: String)
@@ -64,13 +70,15 @@ interface LedgerDao {
     @Query("DELETE FROM category_rules WHERE id = :id") suspend fun deleteRule(id: String)
     @Query("DELETE FROM category_rules WHERE categoryId = :id") suspend fun deleteCategoryRules(id: String)
     @Query("DELETE FROM category_rules WHERE accountId = :id") suspend fun deleteAccountRules(id: String)
+    @Query("DELETE FROM account_rules WHERE id = :id") suspend fun deleteAccountRule(id: String)
+    @Query("DELETE FROM account_rules WHERE accountId = :id") suspend fun deleteAccountRulesForAccount(id: String)
     @Query("UPDATE ledger_entries SET categoryId = NULL, categoryOrigin = 'UNASSIGNED', revision = revision + 1, updatedAt = :now, lastOperationId = :operationId WHERE categoryId = :id") suspend fun clearCategory(id: String, now: String, operationId: String)
     @Query("UPDATE ledger_entries SET accountId = NULL, revision = revision + 1, updatedAt = :now, lastOperationId = :operationId WHERE accountId = :id") suspend fun clearAccount(id: String, now: String, operationId: String)
 }
 
 @Database(entities = [EntryRow::class, CategoryRow::class, AccountRow::class, AliasRow::class, RuleRow::class, OperationRow::class, RetiredEntityRow::class,
     NotificationSlotRow::class, ReceiptRow::class, RawRow::class, SourceRow::class, CaptureSettingsRow::class, ExpiredRevisionRow::class,
-    TemplateRow::class, RecognitionRow::class, IgnoreRuleRow::class], version = 7, exportSchema = true)
+    TemplateRow::class, RecognitionRow::class, IgnoreRuleRow::class, AccountRuleRow::class], version = 8, exportSchema = true)
 abstract class LedgerDatabase : RoomDatabase() {
     abstract fun ledgerDao(): LedgerDao
     abstract fun inboxDao(): InboxDao

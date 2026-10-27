@@ -32,6 +32,7 @@ class RoomLedgerStore(private val database: LedgerDatabase,
     override val accounts = dao.accounts().map { rows -> rows.map { AccountLabel(it.id, it.name, AccountKind.valueOf(it.kind), it.revision) } }
     override val aliases = dao.aliases().map { rows -> rows.map { MerchantAlias(it.id, it.spelling, it.canonicalName, it.revision) } }
     override val rules = dao.rules().map { rows -> rows.map { CategoryRule(it.id, RuleField.valueOf(it.field), LiteralMatch.valueOf(it.match), it.literal, it.categoryId, it.priority, it.sourcePackage, it.accountId, it.revision) } }
+    override val accountRules = dao.accountRules().map { rows -> rows.map { AccountRule(it.id, it.merchant, it.sourcePackage, it.accountId, it.revision) } }
     override val sources = inboxDao.sources().map { rows -> rows.map { SourcePreference(it.sourcePackage, it.ignored, it.parsingEnabled, it.revision) } }
     override val captureSettings = inboxDao.settings().map { CaptureSettings(it?.consent ?: false, it?.revision ?: 0) }
     override val inbox = combine(inboxDao.receipts(), inboxDao.raw(), inboxDao.sources(), templateDao.recognition(), ignoreRuleDao.rules()) { receipts, raw, sources, recognition, ignoreRuleRows ->
@@ -171,6 +172,8 @@ class RoomLedgerStore(private val database: LedgerDatabase,
                     checkRevision(command.id, command.expectedRevision, old?.revision) ?: run {
                         dao.clearAccount(command.id, now.toString(), command.operationId)
                         for (id in dao.accountRuleIds(command.id)) dao.retire(RetiredEntityRow("rule", id))
+                        for (id in dao.accountAssignmentRuleIds(command.id)) dao.retire(RetiredEntityRow("account-rule", id))
+                        dao.deleteAccountRulesForAccount(command.id)
                         dao.deleteAccountRules(command.id); dao.deleteAccount(command.id)
                         dao.retire(RetiredEntityRow("account", command.id))
                         applied(command.id, old!!.revision + 1)
@@ -206,6 +209,25 @@ class RoomLedgerStore(private val database: LedgerDatabase,
                     val old = dao.rule(command.id)
                     checkRevision(command.id, command.expectedRevision, old?.revision) ?: run { dao.deleteRule(command.id); dao.retire(RetiredEntityRow("rule", command.id)); applied(command.id, old!!.revision + 1) }
                 }
+                is LedgerCommand.PutAccountRule -> {
+                    val r = command.rule
+                    val old = dao.accountRule(r.id)
+                    checkRevision(r.id, command.expectedRevision, old?.revision) ?: run {
+                        requireNotRetired("account-rule", r.id)
+                        require(dao.account(r.accountId) != null) { "Choose an existing account." }
+                        require(r.merchant != null || r.sourcePackage != null) { "Choose a merchant or an app." }
+                        val merchant = r.merchant?.let(::validLabel)
+                        val source = r.sourcePackage?.let(::validLabel)
+                        val row = AccountRuleRow(validId(r.id), merchant, source, r.accountId, (old?.revision ?: 0) + 1)
+                        dao.putAccountRule(row); applied(row.id, row.revision)
+                    }
+                }
+                is LedgerCommand.DeleteAccountRule -> {
+                    val old = dao.accountRule(command.id)
+                    checkRevision(command.id, command.expectedRevision, old?.revision) ?: run {
+                        dao.deleteAccountRule(command.id); dao.retire(RetiredEntityRow("account-rule", command.id)); applied(command.id, old!!.revision + 1)
+                    }
+                }
                 is LedgerCommand.PutTemplate, is LedgerCommand.SetTemplateEnabled, is LedgerCommand.DeleteTemplate, is LedgerCommand.RepreviewReceipt -> {
                     val saved = templateWriter.execute(command)
                     val source = when (command) {
@@ -238,11 +260,14 @@ class RoomLedgerStore(private val database: LedgerDatabase,
     }
 
     private suspend fun validateNew(draft: EntryDraft): EntryDraft {
-        if (draft.kind != EntryKind.EXPENSE || draft.categoryId != null || draft.categoryOrigin == CategoryOrigin.EXPLICIT) return validate(draft)
         val aliases = dao.aliases().first().map { MerchantAlias(it.id, it.spelling, it.canonicalName, it.revision) }
+        val accountRules = dao.accountRules().first().map { AccountRule(it.id, it.merchant, it.sourcePackage, it.accountId, it.revision) }
+        val account = if (draft.accountId == null && !draft.suppressAccountRule) Categorization.suggestAccount(draft, aliases, accountRules) else draft.accountId
+        val withAccount = draft.copy(accountId = account, suppressAccountRule = false)
+        if (withAccount.kind != EntryKind.EXPENSE || withAccount.categoryId != null || withAccount.categoryOrigin == CategoryOrigin.EXPLICIT) return validate(withAccount)
         val rules = dao.rules().first().map { CategoryRule(it.id, RuleField.valueOf(it.field), LiteralMatch.valueOf(it.match), it.literal, it.categoryId, it.priority, it.sourcePackage, it.accountId, it.revision) }
-        val category = Categorization.suggest(draft, aliases, rules).categoryId
-        return validate(if (category == null) draft else draft.copy(categoryId = category, categoryOrigin = CategoryOrigin.RULE))
+        val category = Categorization.suggest(withAccount, aliases, rules).categoryId
+        return validate(if (category == null) withAccount else withAccount.copy(categoryId = category, categoryOrigin = CategoryOrigin.RULE))
     }
 
     private suspend fun validate(draft: EntryDraft): EntryDraft {
@@ -254,7 +279,7 @@ class RoomLedgerStore(private val database: LedgerDatabase,
         require(draft.accountId == null || dao.account(draft.accountId) != null) { "The account label no longer exists." }
         require(draft.merchant.length <= 2000 && draft.notes.length <= 20000) { "Merchant or notes are too long." }
         val rate = com.fishese.moneyfly.fx.validatedEntryRate(draft.exchangeRate, draft.exchangeRateCurrency)
-        return draft.copy(amount = normalized, exchangeRate = rate, categoryOrigin = if (draft.categoryId == null) CategoryOrigin.UNASSIGNED else draft.categoryOrigin)
+        return draft.copy(amount = normalized, exchangeRate = rate, categoryOrigin = if (draft.categoryId == null) CategoryOrigin.UNASSIGNED else draft.categoryOrigin, suppressAccountRule = false)
     }
     private fun validId(id: String): String { require(id.isNotBlank() && id.length <= 200) { "A valid ID is required." }; return id }
     private suspend fun requireNotRetired(kind: String, id: String) { require(dao.retired(kind, id) == null) { "This item was deleted. Create a new item instead." } }
@@ -273,7 +298,7 @@ class RoomLedgerStore(private val database: LedgerDatabase,
     companion object {
         /** A new app-owned database; deliberately has no old-database migrations or imports. */
         fun open(context: Context): RoomLedgerStore = RoomLedgerStore(Room.databaseBuilder(context.applicationContext, LedgerDatabase::class.java, "moneyfly_next_ledger_v1.db")
-            .addMigrations(LEDGER_MIGRATION_1_2, LEDGER_MIGRATION_2_3, LEDGER_MIGRATION_3_4, LEDGER_MIGRATION_4_5, LEDGER_MIGRATION_5_6, LEDGER_MIGRATION_6_7)
+            .addMigrations(LEDGER_MIGRATION_1_2, LEDGER_MIGRATION_2_3, LEDGER_MIGRATION_3_4, LEDGER_MIGRATION_4_5, LEDGER_MIGRATION_5_6, LEDGER_MIGRATION_6_7, LEDGER_MIGRATION_7_8)
             .addCallback(object : androidx.room.RoomDatabase.Callback() {
                 override fun onOpen(db: androidx.sqlite.db.SupportSQLiteDatabase) { seedDefaultStatusRules(db) }
             }).build())

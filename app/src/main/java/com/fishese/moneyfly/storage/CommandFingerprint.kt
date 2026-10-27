@@ -19,6 +19,7 @@ internal object CommandFingerprint {
                 if (value.exchangeRate != null || value.exchangeRateCurrency != null) {
                     add("entry-exchange-rate"); add(value.exchangeRate); add(value.exchangeRateCurrency)
                 }
+                if (value.suppressAccountRule) add("suppress-account-rule")
             }
             when (command) {
                 is LedgerCommand.Save -> { add("save"); add(command.entryId); draft(command.draft) }
@@ -37,6 +38,8 @@ internal object CommandFingerprint {
                     add(r.priority); add(r.sourcePackage); add(r.accountId); add(r.revision); add(command.expectedRevision)
                 }
                 is LedgerCommand.DeleteRule -> { add("delete-rule"); add(command.id); add(command.expectedRevision) }
+                is LedgerCommand.PutAccountRule -> { val r = command.rule; add("put-account-rule"); add(r.id); add(r.merchant); add(r.sourcePackage); add(r.accountId); add(r.revision); add(command.expectedRevision) }
+                is LedgerCommand.DeleteAccountRule -> { add("delete-account-rule"); add(command.id); add(command.expectedRevision) }
                 is LedgerCommand.CaptureNotification -> {
                     val p = command.payload
                     add("capture-notification"); add(p.sourcePackage); add(p.userScope); add(p.notificationKey)

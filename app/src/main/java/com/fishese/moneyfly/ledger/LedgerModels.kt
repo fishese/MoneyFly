@@ -8,6 +8,7 @@ import java.util.Currency
 import java.util.Locale
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import com.fishese.moneyfly.capture.NotificationPayload
 import com.fishese.moneyfly.capture.SaveDecision
 import com.fishese.moneyfly.recognition.TemplateDefinition
@@ -27,6 +28,8 @@ data class EntryDraft(
     val timeOrigin: TimeOrigin = TimeOrigin.USER, val timePrecision: TimePrecision = TimePrecision.EXACT,
     val categoryOrigin: CategoryOrigin = if (categoryId == null) CategoryOrigin.UNASSIGNED else CategoryOrigin.EXPLICIT,
     val exchangeRate: String? = null, val exchangeRateCurrency: String? = null,
+    /** A save-time one-off choice; it is not stored on the entry. */
+    val suppressAccountRule: Boolean = false,
 )
 
 data class LedgerEntry(
@@ -43,6 +46,7 @@ data class CategoryRule(
     val categoryId: String, val priority: Int = 0, val sourcePackage: String? = null,
     val accountId: String? = null, val revision: Long = 0,
 )
+data class AccountRule(val id: String, val merchant: String?, val sourcePackage: String?, val accountId: String, val revision: Long = 0)
 
 sealed interface LedgerCommand {
     val operationId: String
@@ -59,6 +63,8 @@ sealed interface LedgerCommand {
     data class DeleteAlias(val id: String, val expectedRevision: Long, override val operationId: String = UUID.randomUUID().toString()) : LedgerCommand
     data class PutRule(val rule: CategoryRule, val expectedRevision: Long? = null, override val operationId: String = UUID.randomUUID().toString()) : LedgerCommand
     data class DeleteRule(val id: String, val expectedRevision: Long, override val operationId: String = UUID.randomUUID().toString()) : LedgerCommand
+    data class PutAccountRule(val rule: AccountRule, val expectedRevision: Long? = null, override val operationId: String = UUID.randomUUID().toString()) : LedgerCommand
+    data class DeleteAccountRule(val id: String, val expectedRevision: Long, override val operationId: String = UUID.randomUUID().toString()) : LedgerCommand
     data class CaptureNotification(val payload: NotificationPayload, override val operationId: String = UUID.randomUUID().toString()) : LedgerCommand
     data class NotificationRemoved(val sourcePackage: String, val userScope: String, val notificationKey: String, override val operationId: String = UUID.randomUUID().toString()) : LedgerCommand
     data class SetCaptureConsent(val enabled: Boolean, val expectedRevision: Long, override val operationId: String = UUID.randomUUID().toString()) : LedgerCommand
@@ -93,6 +99,7 @@ interface LedgerStore {
     val accounts: Flow<List<AccountLabel>>
     val aliases: Flow<List<MerchantAlias>>
     val rules: Flow<List<CategoryRule>>
+    val accountRules: Flow<List<AccountRule>> get() = flowOf(emptyList())
     suspend fun execute(command: LedgerCommand): CommandResult
 }
 

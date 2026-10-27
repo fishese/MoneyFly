@@ -53,6 +53,35 @@ class RoomLedgerStoreTest {
         store.execute(LedgerCommand.PutRule(CategoryRule("conflict", RuleField.MERCHANT, LiteralMatch.EQUALS, "Synthetic Shop", "other")))
         assertNull(store.execute(LedgerCommand.Save(draft)).entry!!.draft.categoryId)
     }
+    @Test fun accountRulesRespectExplicitChoiceSpecificityAndDeletion() = runBlocking {
+        store.execute(LedgerCommand.PutAccount("app-account", "Synthetic app account"))
+        store.execute(LedgerCommand.PutAccount("merchant-account", "Synthetic merchant account"))
+        store.execute(LedgerCommand.PutCategory("category", "Synthetic category"))
+        val appRule = AccountRule("app-rule", null, "synthetic.app", "app-account")
+        val merchantRule = AccountRule("merchant-rule", "Synthetic Shop", null, "merchant-account")
+        assertTrue(store.execute(LedgerCommand.PutAccountRule(appRule)).applied)
+        assertTrue(store.execute(LedgerCommand.PutAccountRule(merchantRule)).applied)
+        store.execute(LedgerCommand.PutRule(CategoryRule("scoped", RuleField.MERCHANT, LiteralMatch.EQUALS, "Synthetic Shop", "category", accountId = "merchant-account")))
+        val fromApp = draft.copy(sourcePackage = "synthetic.app")
+        val saved = store.execute(LedgerCommand.Save(fromApp)).entry!!.draft
+        assertEquals("merchant-account", saved.accountId)
+        assertEquals("category", saved.categoryId)
+        assertEquals("app-account", store.execute(LedgerCommand.Save(fromApp.copy(merchant = "Different"))).entry!!.draft.accountId)
+        assertEquals("app-account", store.execute(LedgerCommand.Save(fromApp.copy(accountId = "app-account"))).entry!!.draft.accountId)
+        assertNull(store.execute(LedgerCommand.Save(fromApp.copy(suppressAccountRule = true))).entry!!.draft.accountId)
+        assertTrue(store.execute(LedgerCommand.DeleteAccountRule("merchant-rule", 1)).applied)
+        assertEquals("app-account", store.execute(LedgerCommand.Save(fromApp)).entry!!.draft.accountId)
+        assertTrue(store.execute(LedgerCommand.DeleteAccount("app-account", 1)).applied)
+        assertTrue(store.accountRules.first().isEmpty())
+        assertEquals(CommandStatus.INVALID, store.execute(LedgerCommand.PutAccountRule(appRule)).status)
+    }
+    @Test fun conflictingAccountRulesLeaveAccountUnassigned() = runBlocking {
+        store.execute(LedgerCommand.PutAccount("one", "First"))
+        store.execute(LedgerCommand.PutAccount("two", "Second"))
+        store.execute(LedgerCommand.PutAccountRule(AccountRule("r1", "Synthetic Shop", null, "one")))
+        store.execute(LedgerCommand.PutAccountRule(AccountRule("r2", "synthetic shop", null, "two")))
+        assertNull(store.execute(LedgerCommand.Save(draft)).entry!!.draft.accountId)
+    }
     @Test fun concurrentEditsConflictAndUndoIsConditional() = runBlocking {
         val entry = store.execute(LedgerCommand.Save(draft, "entry", "save")).entry!!
         val commands = listOf(LedgerCommand.Edit(entry.id, 1, draft.copy(notes = "one"), "edit-one"), LedgerCommand.Edit(entry.id, 1, draft.copy(notes = "two"), "edit-two"))
