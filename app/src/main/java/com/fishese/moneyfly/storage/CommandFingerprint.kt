@@ -28,7 +28,7 @@ internal object CommandFingerprint {
                 is LedgerCommand.Undo -> { add("undo"); add(command.targetOperationId); add(command.expectedRevision) }
                 is LedgerCommand.PutCategory -> { add("put-category"); add(command.id); add(command.name); add(command.expectedRevision) }
                 is LedgerCommand.DeleteCategory -> { add("delete-category"); add(command.id); add(command.expectedRevision) }
-                is LedgerCommand.PutAccount -> { add("put-account"); add(command.id); add(command.name); add(command.kind.name); add(command.expectedRevision) }
+                is LedgerCommand.PutAccount -> { add("put-account"); add(command.id); add(command.name); add(command.kind.name); add(command.expectedRevision); if (command.icon != null) { add("account-icon"); add(command.icon) } }
                 is LedgerCommand.DeleteAccount -> { add("delete-account"); add(command.id); add(command.expectedRevision) }
                 is LedgerCommand.PutAlias -> { add("put-alias"); add(command.id); add(command.spelling); add(command.canonicalName); add(command.expectedRevision) }
                 is LedgerCommand.DeleteAlias -> { add("delete-alias"); add(command.id); add(command.expectedRevision) }

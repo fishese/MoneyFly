@@ -37,7 +37,7 @@ data class LedgerEntry(
     val createdAt: Instant, val updatedAt: Instant, val lastOperationId: String,
 )
 data class Category(val id: String, val name: String, val revision: Long)
-data class AccountLabel(val id: String, val name: String, val kind: AccountKind, val revision: Long)
+data class AccountLabel(val id: String, val name: String, val kind: AccountKind, val revision: Long, val icon: String? = null)
 data class MerchantAlias(val id: String, val spelling: String, val canonicalName: String, val revision: Long)
 enum class RuleField { MERCHANT, NOTES }
 enum class LiteralMatch { EQUALS, CONTAINS, WHOLE_TOKEN }
@@ -57,7 +57,7 @@ sealed interface LedgerCommand {
     data class Undo(val targetOperationId: String, val expectedRevision: Long, override val operationId: String = UUID.randomUUID().toString()) : LedgerCommand
     data class PutCategory(val id: String, val name: String, val expectedRevision: Long? = null, override val operationId: String = UUID.randomUUID().toString()) : LedgerCommand
     data class DeleteCategory(val id: String, val expectedRevision: Long, override val operationId: String = UUID.randomUUID().toString()) : LedgerCommand
-    data class PutAccount(val id: String, val name: String, val kind: AccountKind = AccountKind.ACCOUNT, val expectedRevision: Long? = null, override val operationId: String = UUID.randomUUID().toString()) : LedgerCommand
+    data class PutAccount(val id: String, val name: String, val kind: AccountKind = AccountKind.ACCOUNT, val expectedRevision: Long? = null, override val operationId: String = UUID.randomUUID().toString(), val icon: String? = null) : LedgerCommand
     data class DeleteAccount(val id: String, val expectedRevision: Long, override val operationId: String = UUID.randomUUID().toString()) : LedgerCommand
     data class PutAlias(val id: String, val spelling: String, val canonicalName: String, val expectedRevision: Long? = null, override val operationId: String = UUID.randomUUID().toString()) : LedgerCommand
     data class DeleteAlias(val id: String, val expectedRevision: Long, override val operationId: String = UUID.randomUUID().toString()) : LedgerCommand

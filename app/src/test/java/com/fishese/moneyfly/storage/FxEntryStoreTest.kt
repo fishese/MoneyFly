@@ -31,9 +31,10 @@ class FxEntryStoreTest {
             it.execSQL("ALTER TABLE ledger_entries DROP COLUMN exchangeRate")
             it.execSQL("ALTER TABLE ledger_entries DROP COLUMN exchangeRateCurrency")
             it.execSQL("DROP TABLE account_rules")
+            it.execSQL("ALTER TABLE account_labels DROP COLUMN icon")
             it.version = 6
         }
-        db = Room.databaseBuilder(context, LedgerDatabase::class.java, name).addMigrations(LEDGER_MIGRATION_6_7, LEDGER_MIGRATION_7_8).build()
+        db = Room.databaseBuilder(context, LedgerDatabase::class.java, name).addMigrations(LEDGER_MIGRATION_6_7, LEDGER_MIGRATION_7_8, LEDGER_MIGRATION_8_9).build()
         try {
             store = RoomLedgerStore(db, ReceiptDigester { "synthetic" }, { now })
             assertTrue(store.execute(save).replayed)

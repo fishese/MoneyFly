@@ -29,7 +29,7 @@ class RoomLedgerStore(private val database: LedgerDatabase,
     override val ignoreRules = ignoreRuleDao.rules().map { rows -> rows.map { it.toRule() } }
     override val entries = dao.entries().map { rows -> rows.map { it.toEntry() }.sortedWith(compareByDescending<LedgerEntry> { it.draft.occurredAt }.thenBy { it.id }) }
     override val categories = dao.categories().map { rows -> rows.map { Category(it.id, it.name, it.revision) } }
-    override val accounts = dao.accounts().map { rows -> rows.map { AccountLabel(it.id, it.name, AccountKind.valueOf(it.kind), it.revision) } }
+    override val accounts = dao.accounts().map { rows -> rows.map { AccountLabel(it.id, it.name, AccountKind.valueOf(it.kind), it.revision, it.icon) } }
     override val aliases = dao.aliases().map { rows -> rows.map { MerchantAlias(it.id, it.spelling, it.canonicalName, it.revision) } }
     override val rules = dao.rules().map { rows -> rows.map { CategoryRule(it.id, RuleField.valueOf(it.field), LiteralMatch.valueOf(it.match), it.literal, it.categoryId, it.priority, it.sourcePackage, it.accountId, it.revision) } }
     override val accountRules = dao.accountRules().map { rows -> rows.map { AccountRule(it.id, it.merchant, it.sourcePackage, it.accountId, it.revision) } }
@@ -163,7 +163,9 @@ class RoomLedgerStore(private val database: LedgerDatabase,
                     val old = dao.account(command.id)
                     checkRevision(command.id, command.expectedRevision, old?.revision) ?: run {
                         requireNotRetired("account", command.id)
-                        val row = AccountRow(validId(command.id), validLabel(command.name), command.kind.name, (old?.revision ?: 0) + 1)
+                        val icon = command.icon?.trim()?.takeIf { it.isNotEmpty() }
+                        require(icon == null || (icon.length <= 32 && icon.none { it == '\n' || it == '\r' || it.isISOControl() })) { "Use a short emoji or character for the account icon." }
+                        val row = AccountRow(validId(command.id), validLabel(command.name), command.kind.name, (old?.revision ?: 0) + 1, icon)
                         dao.putAccount(row); applied(row.id, row.revision)
                     }
                 }
@@ -298,7 +300,7 @@ class RoomLedgerStore(private val database: LedgerDatabase,
     companion object {
         /** A new app-owned database; deliberately has no old-database migrations or imports. */
         fun open(context: Context): RoomLedgerStore = RoomLedgerStore(Room.databaseBuilder(context.applicationContext, LedgerDatabase::class.java, "moneyfly_next_ledger_v1.db")
-            .addMigrations(LEDGER_MIGRATION_1_2, LEDGER_MIGRATION_2_3, LEDGER_MIGRATION_3_4, LEDGER_MIGRATION_4_5, LEDGER_MIGRATION_5_6, LEDGER_MIGRATION_6_7, LEDGER_MIGRATION_7_8)
+            .addMigrations(LEDGER_MIGRATION_1_2, LEDGER_MIGRATION_2_3, LEDGER_MIGRATION_3_4, LEDGER_MIGRATION_4_5, LEDGER_MIGRATION_5_6, LEDGER_MIGRATION_6_7, LEDGER_MIGRATION_7_8, LEDGER_MIGRATION_8_9)
             .addCallback(object : androidx.room.RoomDatabase.Callback() {
                 override fun onOpen(db: androidx.sqlite.db.SupportSQLiteDatabase) { seedDefaultStatusRules(db) }
             }).build())

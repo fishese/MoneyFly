@@ -55,6 +55,11 @@ val LEDGER_MIGRATION_7_8: Migration = object : Migration(7, 8) {
         db.execSQL("CREATE TABLE IF NOT EXISTS account_rules (id TEXT NOT NULL PRIMARY KEY, merchant TEXT, sourcePackage TEXT, accountId TEXT NOT NULL, revision INTEGER NOT NULL)")
     }
 }
+val LEDGER_MIGRATION_8_9: Migration = object : Migration(8, 9) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE account_labels ADD COLUMN icon TEXT")
+    }
+}
 
 internal fun seedDefaultStatusRules(db: SupportSQLiteDatabase) {
     db.execSQL("INSERT OR IGNORE INTO ignore_rule_revisions (id, revision, name, sourcePackage, field, pattern, ignoreCase, enabled, deleted) SELECT 'default-status:' || sourcePackage || ':charging-full', 1, 'Charging status', sourcePackage, 'TITLE', 'Charging*', 1, 1, 0 FROM capture_sources WHERE sourcePackage IN ('android', 'com.android.systemui')")

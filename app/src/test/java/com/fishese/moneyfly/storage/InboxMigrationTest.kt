@@ -32,15 +32,16 @@ class InboxMigrationTest {
             old.execSQL("ALTER TABLE ledger_entries DROP COLUMN exchangeRate")
             old.execSQL("ALTER TABLE ledger_entries DROP COLUMN exchangeRateCurrency")
             old.execSQL("DROP TABLE account_rules")
+            old.execSQL("ALTER TABLE account_labels DROP COLUMN icon")
             old.version = 4
         }
-        val upgraded = Room.databaseBuilder(context, LedgerDatabase::class.java, filename).addMigrations(LEDGER_MIGRATION_4_5, LEDGER_MIGRATION_5_6, LEDGER_MIGRATION_6_7, LEDGER_MIGRATION_7_8).build()
+        val upgraded = Room.databaseBuilder(context, LedgerDatabase::class.java, filename).addMigrations(LEDGER_MIGRATION_4_5, LEDGER_MIGRATION_5_6, LEDGER_MIGRATION_6_7, LEDGER_MIGRATION_7_8, LEDGER_MIGRATION_8_9).build()
         try {
             val rule = RoomLedgerStore(upgraded, ReceiptDigester { "synthetic" }).ignoreRules.first().single()
             assertEquals("old-rule", rule.id)
             assertTrue(rule.sameAppOnly)
             assertFalse(rule.summaryOnly)
-            assertEquals(8, upgraded.openHelper.readableDatabase.version)
+            assertEquals(9, upgraded.openHelper.readableDatabase.version)
         } finally { upgraded.close(); context.deleteDatabase(filename) }
     }
 
@@ -68,7 +69,7 @@ class InboxMigrationTest {
             old.execSQL("INSERT INTO operation_results VALUES (?, ?, ?, NULL)", arrayOf("old-save", CommandFingerprint.of(command), LedgerCodec.result(CommandResult(CommandStatus.APPLIED, "entry", 1, entry))))
             old.version = 1
         }
-        val upgraded = Room.databaseBuilder(context, LedgerDatabase::class.java, filename).addMigrations(LEDGER_MIGRATION_1_2, LEDGER_MIGRATION_2_3, LEDGER_MIGRATION_3_4, LEDGER_MIGRATION_4_5, LEDGER_MIGRATION_5_6, LEDGER_MIGRATION_6_7, LEDGER_MIGRATION_7_8).build()
+        val upgraded = Room.databaseBuilder(context, LedgerDatabase::class.java, filename).addMigrations(LEDGER_MIGRATION_1_2, LEDGER_MIGRATION_2_3, LEDGER_MIGRATION_3_4, LEDGER_MIGRATION_4_5, LEDGER_MIGRATION_5_6, LEDGER_MIGRATION_6_7, LEDGER_MIGRATION_7_8, LEDGER_MIGRATION_8_9).build()
         try {
             val store = RoomLedgerStore(upgraded, ReceiptDigester { "synthetic-digest" }, { instant })
             assertEquals(entry, store.entries.first().single())
@@ -78,7 +79,7 @@ class InboxMigrationTest {
             assertFalse(store.captureSettings.first().consent)
             assertTrue(store.ignoreRules.first().isEmpty())
             assertTrue(store.execute(LedgerCommand.SetCaptureConsent(true, 0)).applied)
-            assertEquals(8, upgraded.openHelper.readableDatabase.version)
+            assertEquals(9, upgraded.openHelper.readableDatabase.version)
         } finally { upgraded.close(); context.deleteDatabase(filename) }
     }
 }

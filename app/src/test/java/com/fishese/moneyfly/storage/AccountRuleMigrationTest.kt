@@ -23,8 +23,8 @@ class AccountRuleMigrationTest {
         val command = LedgerCommand.Save(EntryDraft("12.00", merchant = "Synthetic"), "entry", "old-save")
         assertTrue(RoomLedgerStore(db).execute(command).applied)
         db.close()
-        context.openOrCreateDatabase(name, Context.MODE_PRIVATE, null).use { it.execSQL("DROP TABLE account_rules"); it.version = 7 }
-        db = Room.databaseBuilder(context, LedgerDatabase::class.java, name).addMigrations(LEDGER_MIGRATION_7_8).build()
+        context.openOrCreateDatabase(name, Context.MODE_PRIVATE, null).use { it.execSQL("DROP TABLE account_rules"); it.execSQL("ALTER TABLE account_labels DROP COLUMN icon"); it.version = 7 }
+        db = Room.databaseBuilder(context, LedgerDatabase::class.java, name).addMigrations(LEDGER_MIGRATION_7_8, LEDGER_MIGRATION_8_9).build()
         try {
             val store = RoomLedgerStore(db)
             assertEquals("12.00", store.entries.first().single().draft.amount)

@@ -36,7 +36,7 @@ class TemplateStoreTest {
         fixedCurrencyEvidence = FixedCurrencyEvidence.USER_CONFIRMED_ASSUMPTION, enabled = true)
     private fun payload(key: String) = NotificationPayload("invalid.synthetic", "synthetic-user", key, now, now, "Synthetic title", "Paid 12.34 at SYNTHETIC SHOP.")
     @Before fun setup() { context = ApplicationProvider.getApplicationContext(); context.deleteDatabase(filename); reopen() }
-    private fun reopen() { db = Room.databaseBuilder(context, LedgerDatabase::class.java, filename).addMigrations(LEDGER_MIGRATION_1_2, LEDGER_MIGRATION_2_3, LEDGER_MIGRATION_3_4, LEDGER_MIGRATION_4_5, LEDGER_MIGRATION_5_6, LEDGER_MIGRATION_6_7, LEDGER_MIGRATION_7_8).build(); store = RoomLedgerStore(db, digest, { now }) }
+    private fun reopen() { db = Room.databaseBuilder(context, LedgerDatabase::class.java, filename).addMigrations(LEDGER_MIGRATION_1_2, LEDGER_MIGRATION_2_3, LEDGER_MIGRATION_3_4, LEDGER_MIGRATION_4_5, LEDGER_MIGRATION_5_6, LEDGER_MIGRATION_6_7, LEDGER_MIGRATION_7_8, LEDGER_MIGRATION_8_9).build(); store = RoomLedgerStore(db, digest, { now }) }
     @After fun cleanup() { db.close(); context.deleteDatabase(filename) }
     private suspend fun capture(key: String): InboxItem {
         val id = store.execute(LedgerCommand.CaptureNotification(payload(key))).entityId
@@ -352,7 +352,7 @@ class TemplateStoreTest {
         // The v2 tables are unchanged; remove only v3 additions to form a v2 baseline.
         context.openOrCreateDatabase(filename, Context.MODE_PRIVATE, null).use { old ->
             old.execSQL("DROP TABLE template_revisions"); old.execSQL("DROP TABLE receipt_recognition")
-            old.execSQL("DROP TABLE ignore_rule_revisions"); old.execSQL("DROP TABLE account_rules"); old.execSQL("ALTER TABLE ledger_entries DROP COLUMN exchangeRate"); old.execSQL("ALTER TABLE ledger_entries DROP COLUMN exchangeRateCurrency"); old.version = 2
+            old.execSQL("DROP TABLE ignore_rule_revisions"); old.execSQL("DROP TABLE account_rules"); old.execSQL("ALTER TABLE account_labels DROP COLUMN icon"); old.execSQL("ALTER TABLE ledger_entries DROP COLUMN exchangeRate"); old.execSQL("ALTER TABLE ledger_entries DROP COLUMN exchangeRateCurrency"); old.version = 2
         }
         reopen()
         assertEquals("manual", store.entries.first().single().id)
