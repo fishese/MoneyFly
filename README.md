@@ -76,10 +76,22 @@ artifact is unsigned.
 
 ## Privacy and project contents
 
-There is no Internet permission, login, cloud service or AI requirement. Capture
+There is no login, cloud service or AI requirement. Internet access is used for
+exchange rates. Capture
 is opt-in. Raw notification retention is bounded by age, count and size; saved
 entries retain their own provenance. Android application storage protects the
-local database; this is not an additional encrypted vault.
+local database. Settings offers an optional app password and biometric unlock, and
+optional SQLCipher database encryption. The database encryption key is protected by
+Android Keystore and available to the background listener while the app is locked.
+The app password locks the interface and encrypts portable backups; it does not
+directly wrap the background database key.
+
+Backups include entries, categories, account labels, rules, templates, sources and
+retained Inbox messages. They use the app password and can be restored to another
+device. Capture consent is deliberately reset on restore. Device keys, app lock
+settings, exchange-rate caches and currency preferences are not included; set those
+up again on the destination device. The current backup format accepts the same
+database schema version and rejects incompatible files before replacing data.
 
 Raw notification exports, reference-app research, device dumps, databases,
 screenshots, build artifacts and signing material are excluded from Git. Included

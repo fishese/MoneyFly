@@ -293,6 +293,7 @@ internal fun DateField(label: String, value: String, allowBlank: Boolean = false
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun Settings(categories: List<Category>, accounts: List<AccountLabel>, aliases: List<MerchantAlias>, rules: List<CategoryRule>, accountRules: List<AccountRule>, sources: List<SourcePreference>, templates: List<TemplateDefinition>, ignoreRules: List<IgnoreRule>, modifier: Modifier, store: LedgerStore, fxRepository: com.fishese.moneyfly.fx.FxRepository?, fxState: com.fishese.moneyfly.fx.FxSnapshot, entries: List<LedgerEntry>, captureController: CaptureController?, execute: (LedgerCommand, () -> Unit) -> Unit) {
+    var settingsTab by rememberSaveable { mutableIntStateOf(0) }
     var section by rememberSaveable { mutableIntStateOf(0) }
     var editId by rememberSaveable { mutableStateOf<String?>(null) }
     var search by rememberSaveable { mutableStateOf("") }
@@ -313,20 +314,19 @@ private fun Settings(categories: List<Category>, accounts: List<AccountLabel>, a
             Column {
                 Text(stringResource(R.string.settings), style = MaterialTheme.typography.headlineMedium)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (fxRepository != null) AssistChip(onClick = { applyScope.launch { settingsListState.animateScrollToItem(1) } }, label = { Text(stringResource(R.string.settings_currency_shortcut)) }, modifier = Modifier.testTag("settings_jump_currency"))
-                    AssistChip(onClick = { section = 0; search = ""; applyScope.launch { settingsListState.animateScrollToItem(2) } }, label = { Text(stringResource(R.string.categories)) }, modifier = Modifier.testTag("settings_jump_categories"))
-                    AssistChip(onClick = { section = 3; search = ""; applyScope.launch { settingsListState.animateScrollToItem(2) } }, label = { Text(stringResource(R.string.settings_rules_shortcut)) }, modifier = Modifier.testTag("settings_jump_rules"))
-                    AssistChip(onClick = { applyScope.launch { settingsListState.animateScrollToItem(3 + maxOf(ids.size, 1)) } }, label = { Text(stringResource(R.string.settings_notifications_shortcut)) }, modifier = Modifier.testTag("settings_jump_notifications"))
+                    listOf(R.string.settings_tab_organize, R.string.settings_tab_notifications, R.string.settings_tab_currency, R.string.settings_tab_security).forEachIndexed { index, label ->
+                        FilterChip(selected = settingsTab == index, onClick = { settingsTab = index }, label = { Text(stringResource(label)) }, modifier = Modifier.testTag("settings_tab_$index"))
+                    }
                 }
             }
         }
-        item(key = "settings_currency") {
+        if (settingsTab == 2) item(key = "settings_currency") {
             if (fxRepository != null) {
                 FxSettings(fxRepository, fxState, entries)
                 Spacer(Modifier.height(20.dp))
             }
         }
-        item(key = "settings_organize") {
+        if (settingsTab == 0) item(key = "settings_organize") {
             Text(stringResource(R.string.shell_organize), style = MaterialTheme.typography.headlineMedium)
             Text(stringResource(R.string.shell_organize_hint), Modifier.padding(vertical = 10.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -350,7 +350,7 @@ private fun Settings(categories: List<Category>, accounts: List<AccountLabel>, a
                 categoryApplyResult?.let { (updated, failed) -> Text(stringResource(R.string.category_apply_result, updated, failed), style = MaterialTheme.typography.bodySmall) }
             }
         }
-        items(ids) { id ->
+        if (settingsTab == 0) items(ids, key = { "label:$it" }) { id ->
             val title = when(section) { 0 -> categories.first { it.id == id }.name; 1 -> accounts.first { it.id == id }.let { listOfNotNull(it.icon, it.name).joinToString(" ") }; 2 -> aliases.first { it.id == id }.let { "${it.spelling} → ${it.canonicalName}" }; else -> rules.first { it.id == id }.let { "${it.literal} → ${categories.find { c -> c.id == it.categoryId }?.name.orEmpty()} (${it.priority})" } }
             Surface(Modifier.fillMaxWidth().testTag("settings_label_$id").clickable { editId = id }, shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surfaceContainerLow) {
                 Row(Modifier.padding(16.dp).heightIn(min = 32.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -359,8 +359,8 @@ private fun Settings(categories: List<Category>, accounts: List<AccountLabel>, a
                 }
             }
         }
-        if (ids.isEmpty()) item { Text(stringResource(if (search.isBlank()) R.string.no_labels else R.string.shell_no_label_matches), Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
-        item(key = "settings_notifications") {
+        if (settingsTab == 0 && ids.isEmpty()) item { Text(stringResource(if (search.isBlank()) R.string.no_labels else R.string.shell_no_label_matches), Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        if (settingsTab == 1) item(key = "settings_notifications") {
             Spacer(Modifier.height(18.dp))
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Text(stringResource(R.string.shell_notifications), Modifier.padding(top = 24.dp), style = MaterialTheme.typography.titleLarge)
@@ -369,6 +369,15 @@ private fun Settings(categories: List<Category>, accounts: List<AccountLabel>, a
             IgnoreRuleSettings(ignoreRules) { command -> execute(command) {} }
             TemplateSettings(templates, store, execute)
             Text(stringResource(R.string.local_journal), Modifier.padding(vertical = 20.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        if (settingsTab == 3) item(key = "settings_security") {
+            val context = LocalContext.current
+            val manager = (context.applicationContext as? com.fishese.moneyfly.MoneyFlyApplication)?.appLock
+            val activity = context as? android.app.Activity
+            if (manager != null && activity != null) {
+                SecuritySettings(manager, activity)
+                if (activity is com.fishese.moneyfly.MainActivity) BackupSettings(manager, activity)
+            }
         }
     }
     if (confirmApplyCategories) AlertDialog(onDismissRequest = { confirmApplyCategories = false }, title = { Text(stringResource(R.string.category_apply_existing)) }, text = { Text(stringResource(R.string.category_apply_confirm)) },

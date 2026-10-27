@@ -22,8 +22,8 @@ android {
         applicationId = "com.fishese.moneyfly"
         minSdk = 29
         targetSdk = 36
-        versionCode = 22
-        versionName = "0.10.6"
+        versionCode = 23
+        versionName = "0.10.7"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     signingConfigs {
@@ -74,6 +74,8 @@ dependencies {
     implementation("androidx.room:room-runtime:2.8.5")
     implementation("androidx.room:room-ktx:2.8.5")
     implementation("androidx.work:work-runtime-ktx:2.10.0")
+    implementation("net.zetetic:sqlcipher-android:4.19.1@aar")
+    implementation("androidx.sqlite:sqlite:2.6.2")
     ksp("androidx.room:room-compiler:2.8.5")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")

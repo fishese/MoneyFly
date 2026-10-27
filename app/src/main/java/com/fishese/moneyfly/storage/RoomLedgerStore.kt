@@ -18,6 +18,15 @@ class RoomLedgerStore(private val database: LedgerDatabase,
     private val clock: () -> Instant = Instant::now,
     private val retention: RawRetention = RawRetention(),
 ) : LedgerStore, InboxStore, TemplateStore {
+    suspend fun createEncryptedBackup(password: CharArray): ByteArray = kotlinx.coroutines.withContext(Dispatchers.Default) {
+        val snapshot = BackupSnapshot.snapshot(database)
+        try { com.fishese.moneyfly.security.BackupCrypto.encrypt(snapshot, password) } finally { snapshot.fill(0) }
+    }
+
+    suspend fun restoreEncryptedBackup(data: ByteArray, password: CharArray) = kotlinx.coroutines.withContext(Dispatchers.Default) {
+        val snapshot = com.fishese.moneyfly.security.BackupCrypto.decrypt(data, password)
+        try { BackupSnapshot.restore(database, snapshot) } finally { snapshot.fill(0) }
+    }
     private val dao = database.ledgerDao()
     private val inboxDao = database.inboxDao()
     private val templateDao = database.templateDao()
@@ -311,11 +320,16 @@ class RoomLedgerStore(private val database: LedgerDatabase,
 
     companion object {
         /** A new app-owned database; deliberately has no old-database migrations or imports. */
-        fun open(context: Context): RoomLedgerStore = RoomLedgerStore(Room.databaseBuilder(context.applicationContext, LedgerDatabase::class.java, "moneyfly_next_ledger_v1.db")
+        fun open(context: Context): RoomLedgerStore {
+            val (name, factory) = EncryptedStorage.prepare(context)
+            val builder = Room.databaseBuilder(context.applicationContext, LedgerDatabase::class.java, name)
+            if (factory != null) builder.openHelperFactory(factory)
+            return RoomLedgerStore(builder
             .addMigrations(LEDGER_MIGRATION_1_2, LEDGER_MIGRATION_2_3, LEDGER_MIGRATION_3_4, LEDGER_MIGRATION_4_5, LEDGER_MIGRATION_5_6, LEDGER_MIGRATION_6_7, LEDGER_MIGRATION_7_8, LEDGER_MIGRATION_8_9)
             .addCallback(object : androidx.room.RoomDatabase.Callback() {
                 override fun onOpen(db: androidx.sqlite.db.SupportSQLiteDatabase) { seedDefaultIgnoredSources(db); seedDefaultStatusRules(db); seedStarterTemplates(db) }
             }).build())
+        }
     }
 }
 

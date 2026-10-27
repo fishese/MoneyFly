@@ -71,6 +71,7 @@ class NotificationInboxTest {
         compose.onNodeWithTag("confirm_ignore_app", useUnmergedTree = true).performClick()
         compose.waitUntil { store.sources.value.single().ignored }
         compose.onNodeWithTag("destination_2", useUnmergedTree = true).performClick()
+        compose.onNodeWithTag("settings_tab_1", useUnmergedTree = true).performClick()
         compose.onNodeWithTag("settings_list").performScrollToNode(hasTestTag("source_settings"))
         compose.onNodeWithTag("source_settings", useUnmergedTree = true).performClick()
         compose.onNodeWithTag("settings_list").performScrollToNode(hasTestTag("restore_source_sample.app"))

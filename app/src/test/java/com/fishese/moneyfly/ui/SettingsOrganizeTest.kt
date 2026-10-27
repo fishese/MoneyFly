@@ -39,16 +39,15 @@ class SettingsOrganizeTest {
         }
     }
 
-    @Test fun shortcutsReachRulesAndNotificationControls() {
+    @Test fun tabsSeparateRulesAndNotificationControls() {
         val store = LabelStore()
         store.categories.value = listOf(Category("transport", "Transport", 1))
         store.rules.value = listOf(CategoryRule("bus", RuleField.MERCHANT, LiteralMatch.EQUALS, "Synthetic bus", "transport"))
         compose.setContent { MoneyFlyApp(store) }
         compose.onNodeWithTag("destination_2", useUnmergedTree = true).performClick()
-        compose.onNodeWithTag("settings_jump_rules", useUnmergedTree = true).performClick()
+        compose.onNodeWithText("Category rules", useUnmergedTree = true).performClick()
         compose.onNodeWithTag("apply_category_rules", useUnmergedTree = true).assertExists()
-        compose.onNodeWithTag("settings_list").performScrollToNode(hasTestTag("settings_jump_notifications"))
-        compose.onNodeWithTag("settings_jump_notifications", useUnmergedTree = true).performClick()
+        compose.onNodeWithTag("settings_tab_1", useUnmergedTree = true).performScrollTo().performClick()
         compose.onNodeWithText("Notification capture", useUnmergedTree = true).assertIsDisplayed()
         compose.runOnIdle { assertTrue(store.commands.isEmpty()) }
     }

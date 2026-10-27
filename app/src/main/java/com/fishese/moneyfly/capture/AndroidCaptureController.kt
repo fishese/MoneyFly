@@ -12,6 +12,7 @@ import com.fishese.moneyfly.ledger.LedgerStore
 import java.time.Instant
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
@@ -58,11 +59,13 @@ class AndroidCaptureController(
     @Volatile private var captureAllowed = false
     // Bound incoming work, instead of retaining unbounded raw notification objects.
     private val pending = Channel<LedgerCommand>(64)
+    private val initialSettings = CompletableDeferred<Unit>()
 
     init {
         scope.launch {
             inbox.captureSettings.collect { settings ->
                 captureAllowed = settings.consent
+                initialSettings.complete(Unit)
                 if (!settings.consent) while (pending.tryReceive().isSuccess) { /* discard queued raw payloads */ }
             }
         }
@@ -75,6 +78,8 @@ class AndroidCaptureController(
             }
         }
     }
+
+    internal suspend fun awaitInitialSettings() = initialSettings.await()
 
     private fun hasAccess(): Boolean = try {
         accessOverride?.invoke() ?: context.getSystemService(NotificationManager::class.java).isNotificationListenerAccessGranted(component)
@@ -138,6 +143,8 @@ class AndroidCaptureController(
     private fun enqueue(command: LedgerCommand) {
         if (pending.trySend(command).isFailure) state.update { it.copy(problem = CaptureProblem.INTAKE_BUSY) }
     }
+
+    internal fun reportIntakeBusy() { state.update { it.copy(problem = CaptureProblem.INTAKE_BUSY) } }
 
     override suspend fun refresh(): Boolean = refreshMutex.withLock {
         withContext(Dispatchers.IO) {
