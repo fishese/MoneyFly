@@ -314,7 +314,7 @@ class RoomLedgerStore(private val database: LedgerDatabase,
         fun open(context: Context): RoomLedgerStore = RoomLedgerStore(Room.databaseBuilder(context.applicationContext, LedgerDatabase::class.java, "moneyfly_next_ledger_v1.db")
             .addMigrations(LEDGER_MIGRATION_1_2, LEDGER_MIGRATION_2_3, LEDGER_MIGRATION_3_4, LEDGER_MIGRATION_4_5, LEDGER_MIGRATION_5_6, LEDGER_MIGRATION_6_7, LEDGER_MIGRATION_7_8, LEDGER_MIGRATION_8_9)
             .addCallback(object : androidx.room.RoomDatabase.Callback() {
-                override fun onOpen(db: androidx.sqlite.db.SupportSQLiteDatabase) { seedDefaultStatusRules(db) }
+                override fun onOpen(db: androidx.sqlite.db.SupportSQLiteDatabase) { seedDefaultIgnoredSources(db); seedDefaultStatusRules(db); seedStarterTemplates(db) }
             }).build())
     }
 }

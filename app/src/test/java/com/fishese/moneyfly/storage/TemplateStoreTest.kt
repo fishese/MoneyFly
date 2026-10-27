@@ -44,6 +44,40 @@ class TemplateStoreTest {
     }
     private suspend fun enableCapture() { assertTrue(store.execute(LedgerCommand.SetCaptureConsent(true, 0)).applied) }
 
+    @Test fun startersAreGenericAndPreserveUserChoices() = runBlocking {
+        val sql = db.openHelper.writableDatabase
+        seedStarterTemplates(sql)
+        val starters = store.templates.first()
+        assertEquals(11, starters.size)
+        assertTrue(starters.all { it.fixedMerchant == null && it.patterns.flatMap { p -> p.segments }.filterIsInstance<PatternSegment.Slot>().map { s -> s.name }.containsAll(listOf(SlotName.AMOUNT, SlotName.MERCHANT)) })
+        enableCapture()
+        val sample = NotificationPayload(SuggestedTemplates.SAMSUNG_WALLET, "synthetic", "starter", now, now,
+            title = "Smart Octopus HK$7.40 Invented Merchant")
+        store.execute(LedgerCommand.CaptureNotification(sample))
+        assertEquals("Invented Merchant", store.entries.first().single().draft.merchant)
+        val first = starters.first()
+        assertTrue(store.execute(LedgerCommand.SetTemplateEnabled(first.id, first.revision, false)).applied)
+        seedStarterTemplates(sql)
+        assertFalse(store.templates.first().single { it.id == first.id }.enabled)
+        assertEquals(11, store.templates.first().size)
+    }
+
+    @Test fun startersDoNotOverrideExistingSourceSettings() = runBlocking {
+        val source = SuggestedTemplates.SAMSUNG_WALLET
+        assertTrue(store.execute(LedgerCommand.SetIgnoredSource(source, true, 0)).applied)
+        seedStarterTemplates(db.openHelper.writableDatabase)
+        assertTrue(store.templates.first().none { it.sourcePackage == source })
+        assertTrue(store.sources.first().single { it.sourcePackage == source }.ignored)
+    }
+
+    @Test fun startersDoNotOverrideDisabledCustomTemplates() = runBlocking {
+        val source = SuggestedTemplates.SAMSUNG_WALLET
+        assertTrue(store.execute(LedgerCommand.PutTemplate(definition().copy(sourcePackage = source, enabled = false))).applied)
+        seedStarterTemplates(db.openHelper.writableDatabase)
+        assertEquals(listOf("format"), store.templates.first().filter { it.sourcePackage == source }.map { it.id })
+        assertTrue(store.sources.first().none { it.sourcePackage == source })
+    }
+
     @Test fun clearMatchAutomaticallySavesOnceAndChangedMatchStillChecksForDuplicates() = runBlocking {
         enableCapture(); store.execute(LedgerCommand.PutTemplate(definition()))
         val command = LedgerCommand.CaptureNotification(payload("automatic"), "automatic-operation")

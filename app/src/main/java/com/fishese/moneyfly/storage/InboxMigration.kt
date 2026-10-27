@@ -2,6 +2,11 @@ package com.fishese.moneyfly.storage
 
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.fishese.moneyfly.capture.DefaultIgnoredSources
+import com.fishese.moneyfly.recognition.DefaultStatusRules
+import com.fishese.moneyfly.recognition.StarterTemplates
+import com.fishese.moneyfly.recognition.TemplateEngine
+import com.fishese.moneyfly.recognition.RecognitionStatus
 
 val LEDGER_MIGRATION_1_2: Migration = object : Migration(1, 2) {
     override fun migrate(db: SupportSQLiteDatabase) {
@@ -62,6 +67,48 @@ val LEDGER_MIGRATION_8_9: Migration = object : Migration(8, 9) {
 }
 
 internal fun seedDefaultStatusRules(db: SupportSQLiteDatabase) {
-    db.execSQL("INSERT OR IGNORE INTO ignore_rule_revisions (id, revision, name, sourcePackage, field, pattern, ignoreCase, enabled, deleted) SELECT 'default-status:' || sourcePackage || ':charging-full', 1, 'Charging status', sourcePackage, 'TITLE', 'Charging*', 1, 1, 0 FROM capture_sources WHERE sourcePackage IN ('android', 'com.android.systemui')")
-    db.execSQL("INSERT OR IGNORE INTO ignore_rule_revisions (id, revision, name, sourcePackage, field, pattern, ignoreCase, enabled, deleted) SELECT 'default-status:android:zone-launcher', 1, 'Zone Launcher status', sourcePackage, 'TITLE', 'Zone Launcher *', 1, 1, 0 FROM capture_sources WHERE sourcePackage = 'android'")
+    for (source in listOf("android", "com.android.systemui")) for (rule in DefaultStatusRules.forSource(source)) {
+        db.execSQL("INSERT OR IGNORE INTO ignore_rule_revisions (id, revision, name, sourcePackage, field, pattern, ignoreCase, enabled, deleted) SELECT ?, 1, ?, ?, ?, ?, 1, 1, 0 WHERE EXISTS (SELECT 1 FROM capture_sources WHERE sourcePackage = ?)",
+            arrayOf(rule.id, rule.name, source, rule.field.name, rule.pattern, source))
+    }
+}
+
+/** Preserve every existing source choice, including restored apps. */
+internal fun seedDefaultIgnoredSources(db: SupportSQLiteDatabase) {
+    for (source in DefaultIgnoredSources.packages) {
+        db.execSQL("INSERT OR IGNORE INTO capture_sources (sourcePackage, ignored, parsingEnabled, revision) VALUES (?, 1, 0, 1)", arrayOf(source))
+    }
+}
+
+/** Enroll only untouched sources; existing custom templates and source choices remain authoritative. */
+internal fun seedStarterTemplates(db: SupportSQLiteDatabase) {
+    // Disabled or deleted custom templates are choices too, even when no source row exists.
+    val configuredSources = mutableSetOf<String>()
+    var enabledCount = 0
+    db.query("SELECT t.definition, t.enabled, t.deleted FROM template_revisions t WHERE t.revision = (SELECT MAX(revision) FROM template_revisions WHERE id = t.id)").use { cursor ->
+        while (cursor.moveToNext()) {
+            configuredSources += TemplateCodec.decode(cursor.getString(0)).sourcePackage
+            if (cursor.getInt(1) != 0 && cursor.getInt(2) == 0) enabledCount++
+        }
+    }
+    for ((source, definitions) in StarterTemplates.definitions.groupBy { it.sourcePackage }) {
+        val existing = db.query("SELECT 1 FROM capture_sources WHERE sourcePackage = ?", arrayOf(source)).use { it.moveToFirst() }
+        if (existing || source in configuredSources || enabledCount + definitions.size > 100) continue
+        // A previously deleted starter must not be resurrected.
+        val seen = definitions.any { definition ->
+            db.query("SELECT 1 FROM template_revisions WHERE id = ?", arrayOf(definition.id)).use { it.moveToFirst() }
+        }
+        if (seen) continue
+        check(definitions.all { definition ->
+            TemplateEngine.validate(definition).isEmpty() && TemplateEngine.generatedExamples(definition).let { examples ->
+                examples.size == 3 && examples.all { (it.result.status == RecognitionStatus.READY) == it.shouldMatch }
+            }
+        })
+        for (definition in definitions) db.execSQL(
+            "INSERT INTO template_revisions (id, revision, definition, enabled, deleted) VALUES (?, 1, ?, 1, 0)",
+            arrayOf(definition.id, TemplateCodec.encode(definition)),
+        )
+        db.execSQL("INSERT INTO capture_sources (sourcePackage, ignored, parsingEnabled, revision) VALUES (?, 0, 1, 1)", arrayOf(source))
+        enabledCount += definitions.size
+    }
 }

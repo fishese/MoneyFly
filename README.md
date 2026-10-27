@@ -38,11 +38,15 @@ record. Ignore actions never dismiss the original Android notification.
 Similar-message rules can ignore Android summary notifications without a text pattern, or use literal text with `*` for changing parts. Same app only
 is on by default; switching it off explicitly applies a rule across apps. Review
 matches before saving. Disable rules in Settings to restore pending matches.
-Narrow system charging/launcher status rules are reversible defaults.
+Narrow system charging, power-connection and launcher status rules are reversible
+defaults. Common camera, clock, weather and other non-financial apps are ignored
+by default; the source switch restores capture without changing an existing choice.
 
-Templates extract changing amounts, merchants and optional fields. Matching
-suggestions are optional and must pass current-message and synthetic variation
-checks. New clear matches record automatically. Saving an enabled template also
+Templates extract changing amounts, merchants and optional fields. Generic Smart
+Octopus, Google Wallet and AEON alert templates are enabled for sources without
+existing settings or templates; they contain no real merchant, amount or account.
+Existing choices are never replaced. Other matching suggestions are optional and
+must pass current-message and synthetic variation checks. New clear matches record automatically. Saving an enabled template also
 applies it to all retained, unrecorded notification messages, including older
 messages from apps that reuse a notification. Possible duplicates, ambiguous,
 grouped or incomplete notifications remain available for review. Event-time interpretation and account assignment

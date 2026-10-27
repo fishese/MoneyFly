@@ -31,6 +31,21 @@ object DefaultStatusRules {
             ignoreCase = true,
             enabled = true,
         ))
+        if (sourcePackage in chargingSources) {
+            val statusPatterns = listOf(
+                "battery-full" to "Battery full*",
+                "battery-charged" to "Battery fully charged*",
+                "plugged-in" to "Device plugged in*",
+                "unplugged" to "Device unplugged*",
+                "power-connected" to "Power connected*",
+                "power-disconnected" to "Power disconnected*",
+                "usb-charging" to "Charging this device via USB*",
+            )
+            for ((id, pattern) in statusPatterns) add(IgnoreRule(
+                id = "default-status:$sourcePackage:$id", name = "Power status",
+                sourcePackage = sourcePackage, field = MessageField.TITLE, pattern = pattern,
+            ))
+        }
         if (sourcePackage == "android") add(IgnoreRule(
             id = "default-status:android:zone-launcher",
             name = "Zone Launcher status",

@@ -121,7 +121,7 @@ class IgnoreRuleStoreTest {
         store.execute(LedgerCommand.SetCaptureConsent(true, 0))
         val first = capture("status-one", source = "com.android.systemui")
         assertEquals(InboxStatus.IGNORED, first.status)
-        val default = store.ignoreRules.first().single()
+        val default = store.ignoreRules.first().single { it.id.endsWith(":charging-full") }
         assertTrue(default.id.startsWith("default-status:"))
 
         assertTrue(store.execute(LedgerCommand.SetIgnoreRuleEnabled(default.id, default.revision, false)).applied)
@@ -129,10 +129,35 @@ class IgnoreRuleStoreTest {
         val second = capture("status-two", source = "com.android.systemui")
         assertEquals(InboxStatus.UNRECOGNIZED, second.status)
 
-        val disabled = store.ignoreRules.first().single()
+        val disabled = store.ignoreRules.first().single { it.id == default.id }
         assertTrue(store.execute(LedgerCommand.DeleteIgnoreRule(disabled.id, disabled.revision)).applied)
         val third = capture("status-three", source = "com.android.systemui")
         assertEquals(InboxStatus.UNRECOGNIZED, third.status)
-        assertTrue(store.ignoreRules.first().isEmpty())
+        assertTrue(store.ignoreRules.first().none { it.id == default.id })
+    }
+
+    @Test fun defaultPowerRulesAreScopedAndReversible() = runBlocking {
+        store.execute(LedgerCommand.SetCaptureConsent(true, 0))
+        val system = capture("power-system", "com.android.systemui", "Power disconnected")
+        val payment = capture("power-payment", "synthetic.app", "Power disconnected")
+        assertEquals(InboxStatus.IGNORED, system.status)
+        assertEquals(InboxStatus.UNRECOGNIZED, payment.status)
+        val rule = store.ignoreRules.first().single { it.id.endsWith(":power-disconnected") }
+        store.execute(LedgerCommand.SetIgnoreRuleEnabled(rule.id, rule.revision, false))
+        assertEquals(InboxStatus.UNRECOGNIZED, store.inbox.first().single { it.id == system.id }.status)
+    }
+
+    @Test fun ignoredSourceDefaultsKeepExplicitChoicesAndBlockCapture() = runBlocking {
+        val sql = database.openHelper.writableDatabase
+        seedDefaultIgnoredSources(sql)
+        store.execute(LedgerCommand.SetCaptureConsent(true, 0))
+        val source = store.sources.first().single { it.sourcePackage == "com.instagram.android" }
+        assertTrue(source.ignored)
+        assertTrue(store.execute(LedgerCommand.CaptureNotification(payload("ignored", source.sourcePackage))).applied)
+        assertTrue(store.inbox.first().isEmpty())
+        assertTrue(store.execute(LedgerCommand.SetIgnoredSource(source.sourcePackage, false, source.revision)).applied)
+        seedDefaultIgnoredSources(sql)
+        assertFalse(store.sources.first().single { it.sourcePackage == source.sourcePackage }.ignored)
+        assertEquals(InboxStatus.UNRECOGNIZED, capture("restored", source.sourcePackage).status)
     }
 }

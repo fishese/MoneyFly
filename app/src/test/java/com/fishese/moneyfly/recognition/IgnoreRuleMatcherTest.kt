@@ -37,11 +37,11 @@ class IgnoreRuleMatcherTest {
     }
 
     @Test fun builtInStatusRulesAreNarrowAndNeverTargetFinancialSources() {
-        val android = DefaultStatusRules.forSource("com.android.systemui").single()
+        val android = DefaultStatusRules.forSource("com.android.systemui").single { it.id.endsWith(":charging-full") }
         assertEquals(MessageField.TITLE, android.field)
         assertTrue(IgnoreRuleMatcher.matches(payload(source = "com.android.systemui"), android))
         assertTrue(DefaultStatusRules.forSource("android").isNotEmpty())
-        assertEquals(2, DefaultStatusRules.forSource("android").size)
+        assertTrue(DefaultStatusRules.forSource("android").size > 2)
         assertTrue(IgnoreRuleMatcher.matches(payload(source = "android", title = "Zone Launcher synthetic status"), DefaultStatusRules.forSource("android").single { it.name.startsWith("Zone") }))
         assertTrue(DefaultStatusRules.forSource("synthetic.bank").isEmpty())
     }
