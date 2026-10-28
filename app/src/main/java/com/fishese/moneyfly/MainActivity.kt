@@ -23,27 +23,41 @@ import com.fishese.moneyfly.ui.AppLockScreen
 import androidx.activity.result.contract.ActivityResultContracts
 import kotlinx.coroutines.flow.MutableStateFlow
 import java.io.ByteArrayOutputStream
+import androidx.activity.viewModels
+import androidx.lifecycle.ViewModel
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.Button
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+
+class BackupOperationState : ViewModel() {
+    var restorePassword: CharArray? = null
+    val message = MutableStateFlow<Int?>(null)
+    override fun onCleared() { restorePassword?.fill('\u0000'); restorePassword = null }
+}
 
 class MainActivity : ComponentActivity() {
     private var readyStore by mutableStateOf<com.fishese.moneyfly.storage.RoomLedgerStore?>(null)
     private var startupFailed by mutableStateOf(false)
-    val backupMessage = MutableStateFlow<Int?>(null)
-    private var pendingBackup: ByteArray? = null
-    private var pendingRestorePassword: CharArray? = null
+    private val backupState: BackupOperationState by viewModels()
+    val backupMessage get() = backupState.message
+    private val stagedBackup get() = java.io.File(cacheDir, "pending-encrypted-backup.mfly")
     private val saveBackup = registerForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
-        val bytes = pendingBackup.also { pendingBackup = null }
-        if (uri == null || bytes == null) { bytes?.fill(0); return@registerForActivityResult }
+        if (uri == null) { stagedBackup.delete(); return@registerForActivityResult }
         lifecycleScope.launch(Dispatchers.IO) {
             backupMessage.value = try {
+                check(stagedBackup.isFile)
                 val output = contentResolver.openOutputStream(uri) ?: error("Unable to open destination")
-                output.use { it.write(bytes); it.flush() }
+                stagedBackup.inputStream().use { input -> output.use { input.copyTo(it); it.flush() } }
                 R.string.backup_saved
-            } catch (_: Exception) { R.string.backup_failed } finally { bytes.fill(0) }
+            } catch (_: Exception) { R.string.backup_failed } finally { stagedBackup.delete() }
         }
     }
     private val openBackup = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        val password = pendingRestorePassword.also { pendingRestorePassword = null }
-        if (uri == null || password == null) { password?.fill('\u0000'); return@registerForActivityResult }
+        val password = backupState.restorePassword.also { backupState.restorePassword = null }
+        if (uri == null) { password?.fill('\u0000'); return@registerForActivityResult }
+        if (password == null) { backupMessage.value = R.string.backup_interrupted; return@registerForActivityResult }
         lifecycleScope.launch(Dispatchers.IO) {
             backupMessage.value = try {
                 val input = contentResolver.openInputStream(uri) ?: error("Unable to open backup")
@@ -66,15 +80,19 @@ class MainActivity : ComponentActivity() {
     }
 
     fun chooseBackupDestination(bytes: ByteArray) {
-        pendingBackup?.fill(0)
-        pendingBackup = bytes
         backupMessage.value = null
-        saveBackup.launch("MoneyFly-backup.mfly")
+        lifecycleScope.launch {
+            try {
+                kotlinx.coroutines.withContext(Dispatchers.IO) { stagedBackup.outputStream().use { it.write(bytes) } }
+                saveBackup.launch("MoneyFly-backup.mfly")
+            } catch (_: Exception) { stagedBackup.delete(); backupMessage.value = R.string.backup_failed }
+            finally { bytes.fill(0) }
+        }
     }
 
     fun chooseBackupToRestore(password: CharArray) {
-        pendingRestorePassword?.fill('\u0000')
-        pendingRestorePassword = password
+        backupState.restorePassword?.fill('\u0000')
+        backupState.restorePassword = password
         backupMessage.value = null
         openBackup.launch(arrayOf("application/octet-stream", "*/*"))
     }
@@ -84,13 +102,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         InboxRetentionWorker.schedule(this)
         com.fishese.moneyfly.fx.FxRateWorker.schedule(this)
-        lifecycleScope.launch(Dispatchers.IO) {
-            try {
-                val store = (application as MoneyFlyApplication).ledgerStore
-                if (seedExpenseCategories(this@MainActivity, store)) seedTransportRules(this@MainActivity, store)
-                kotlinx.coroutines.withContext(Dispatchers.Main) { readyStore = store }
-            } catch (_: Exception) { kotlinx.coroutines.withContext(Dispatchers.Main) { startupFailed = true } }
-        }
+        openStore()
         setContent {
             val app = application as MoneyFlyApplication
             val lock by app.appLock.state.collectAsStateWithLifecycle()
@@ -98,14 +110,40 @@ class MainActivity : ComponentActivity() {
                 if (lock.configured) window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
                 else window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
             }
+            val holder = rememberSaveableStateHolder()
             if (lock.locked) MaterialTheme { AppLockScreen(this, app.appLock, lock.biometric) }
-            else if (readyStore != null) MoneyFlyApp(readyStore!!, app.captureController, app.fxRepository)
-            else MaterialTheme { Text(stringResource(if (startupFailed) R.string.security_storage_open_failed else R.string.security_storage_loading)) }
+            else if (readyStore != null) holder.SaveableStateProvider("app") { MoneyFlyApp(readyStore!!, app.captureController, app.fxRepository) }
+            else MaterialTheme {
+                Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center) {
+                    Text(stringResource(if (startupFailed) R.string.security_storage_open_failed else R.string.security_storage_loading))
+                    if (startupFailed) {
+                        Button(onClick = { openStore() }) { Text(stringResource(R.string.security_storage_retry)) }
+                        if (com.fishese.moneyfly.storage.EncryptedStorage.canCancelPending(this@MainActivity)) {
+                            Button(onClick = {
+                                try { com.fishese.moneyfly.storage.EncryptedStorage.cancelPending(this@MainActivity); openStore() }
+                                catch (_: Exception) { startupFailed = true }
+                            }) { Text(stringResource(R.string.security_storage_cancel_encryption)) }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun openStore() {
+        startupFailed = false
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val store = (application as MoneyFlyApplication).ledgerStore
+                if (seedExpenseCategories(this@MainActivity, store)) seedTransportRules(this@MainActivity, store)
+                kotlinx.coroutines.withContext(Dispatchers.Main) { readyStore = store }
+            } catch (_: Exception) { kotlinx.coroutines.withContext(Dispatchers.Main) { startupFailed = true } }
         }
     }
 
     override fun onResume() {
         super.onResume()
+        (application as MoneyFlyApplication).appLock.onForeground()
         lifecycleScope.launch(Dispatchers.IO) {
             try { (application as MoneyFlyApplication).captureController.onForeground() } catch (_: Exception) { }
         }
@@ -116,11 +154,4 @@ class MainActivity : ComponentActivity() {
         super.onPause()
     }
 
-    override fun onDestroy() {
-        pendingRestorePassword?.fill('\u0000')
-        pendingRestorePassword = null
-        pendingBackup?.fill(0)
-        pendingBackup = null
-        super.onDestroy()
-    }
 }

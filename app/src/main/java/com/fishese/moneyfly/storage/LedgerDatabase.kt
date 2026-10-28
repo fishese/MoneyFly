@@ -63,6 +63,7 @@ interface LedgerDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putRule(row: RuleRow)
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putAccountRule(row: AccountRuleRow)
     @Insert suspend fun putOperation(row: OperationRow)
+    @Query("DELETE FROM operation_results WHERE fingerprint LIKE 'hmac:%' AND rowid NOT IN (SELECT rowid FROM operation_results WHERE fingerprint LIKE 'hmac:%' ORDER BY rowid DESC LIMIT 1000)") suspend fun trimCaptureOperations()
     @Insert suspend fun retire(row: RetiredEntityRow)
     @Query("DELETE FROM categories WHERE id = :id") suspend fun deleteCategory(id: String)
     @Query("DELETE FROM account_labels WHERE id = :id") suspend fun deleteAccount(id: String)

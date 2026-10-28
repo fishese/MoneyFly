@@ -56,6 +56,7 @@ class AndroidCaptureController(
     }
     private val refreshMutex = Mutex()
     @Volatile private var listener: NotificationListenerService? = null
+    private val listenerLock = Any()
     @Volatile private var captureAllowed = false
     // Bound incoming work, instead of retaining unbounded raw notification objects.
     private val pending = Channel<LedgerCommand>(64)
@@ -114,17 +115,22 @@ class AndroidCaptureController(
     }
 
     internal fun connected(service: NotificationListenerService) {
-        listener = service
-        state.update { it.copy(accessGranted = hasAccess(), connected = true, problem = null) }
+        synchronized(listenerLock) {
+            listener = service
+            state.update { it.copy(accessGranted = hasAccess(), connected = true, problem = null) }
+        }
         scope.launch { refresh() }
     }
 
     internal fun disconnected(service: NotificationListenerService) {
-        if (listener !== service) return
-        listener = null
-        val granted = hasAccess()
-        state.update { it.copy(accessGranted = granted, connected = false,
-            problem = if (granted) CaptureProblem.DISCONNECTED else CaptureProblem.ACCESS_DENIED) }
+        val granted = synchronized(listenerLock) {
+            if (listener !== service) return
+            listener = null
+            val access = hasAccess()
+            state.update { it.copy(accessGranted = access, connected = false,
+                problem = if (access) CaptureProblem.DISCONNECTED else CaptureProblem.ACCESS_DENIED) }
+            access
+        }
         if (granted) requestReconnect()
     }
 
@@ -166,8 +172,11 @@ class AndroidCaptureController(
                 }
                 store.execute(LedgerCommand.PruneInbox())
                 val completedAt = Instant.now()
-                refreshPreferences.edit().putLong("last_successful_refresh", completedAt.toEpochMilli()).apply()
-                state.update { it.copy(lastRefresh = completedAt, connected = true) }
+                synchronized(listenerLock) {
+                    if (listener !== activeListener || !hasAccess()) return@withContext false
+                    refreshPreferences.edit().putLong("last_successful_refresh", completedAt.toEpochMilli()).apply()
+                    state.update { it.copy(lastRefresh = completedAt, connected = true) }
+                }
                 true
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (_: SecurityException) {

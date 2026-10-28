@@ -19,7 +19,10 @@ class RoomLedgerStore(private val database: LedgerDatabase,
     private val retention: RawRetention = RawRetention(),
 ) : LedgerStore, InboxStore, TemplateStore {
     suspend fun createEncryptedBackup(password: CharArray): ByteArray = kotlinx.coroutines.withContext(Dispatchers.Default) {
-        val snapshot = BackupSnapshot.snapshot(database)
+        val snapshot = database.withTransaction {
+            inboxWriter.prune(clock())
+            BackupSnapshot.snapshot(database)
+        }
         try { com.fishese.moneyfly.security.BackupCrypto.encrypt(snapshot, password) } finally { snapshot.fill(0) }
     }
 
@@ -278,7 +281,10 @@ class RoomLedgerStore(private val database: LedgerDatabase,
             }
         } catch (e: IllegalArgumentException) { CommandResult(CommandStatus.INVALID, message = e.message ?: "Check the entered values.") }
         inboxWriter.prune(now)
-        dao.putOperation(OperationRow(command.operationId, fingerprint, LedgerCodec.result(result), previous?.let { LedgerCodec.entry(it) }))
+        if (command !is LedgerCommand.CaptureNotification || result.entityId != null || !result.applied) {
+            dao.putOperation(OperationRow(command.operationId, fingerprint, LedgerCodec.result(result), previous?.let { LedgerCodec.entry(it) }))
+            if (fingerprint.startsWith("hmac:")) dao.trimCaptureOperations()
+        }
         result
     }
 

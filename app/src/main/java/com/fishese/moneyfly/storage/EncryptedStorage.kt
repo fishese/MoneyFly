@@ -20,6 +20,16 @@ internal object EncryptedStorage {
         check(prefs.edit().putBoolean(PENDING, true).commit()) { "Could not schedule encryption" }
     }
 
+    fun canCancelPending(context: Context): Boolean {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        return prefs.getBoolean(PENDING, false) && !prefs.getBoolean(ENABLED, false) && context.getDatabasePath(PLAIN_NAME).isFile
+    }
+
+    @Synchronized fun cancelPending(context: Context) {
+        check(canCancelPending(context))
+        check(context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(PENDING).commit())
+    }
+
     @Synchronized fun prepare(context: Context): Pair<String, SupportOpenHelperFactory?> {
         val app = context.applicationContext
         val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)

@@ -71,6 +71,8 @@ class FxRepository(context: Context, private val client: FxRateClient = Frankfur
     private val clock: () -> Long = System::currentTimeMillis) {
     private val preferences = context.applicationContext.getSharedPreferences("reporting-currency-and-rates", Context.MODE_PRIVATE)
     private val mutex = Mutex()
+    private val refreshMutex = Mutex()
+    private var currencyGeneration = 0L
     private val mutable = MutableStateFlow(read())
     val state = mutable.asStateFlow()
 
@@ -102,19 +104,24 @@ class FxRepository(context: Context, private val client: FxRateClient = Frankfur
     suspend fun initialize(entries: List<LedgerEntry>) = withContext(Dispatchers.IO) { mutex.withLock {
         if (!mutable.value.initialized) entries.filter { !it.deleted && it.draft.sourcePackage != null }
             .minWithOrNull(compareBy<LedgerEntry> { it.createdAt }.thenBy { it.draft.occurredAt }.thenBy { it.id })?.let {
+                if (it.draft.currency != mutable.value.currency) currencyGeneration++
                 persist(mutable.value.copy(currency = it.draft.currency, initialized = true))
             }
     } }
 
     suspend fun setCurrency(currency: String) = withContext(Dispatchers.IO) { mutex.withLock {
-        require(supportedCurrency(currency)); persist(mutable.value.copy(currency = currency, initialized = true, failed = false))
+        require(supportedCurrency(currency)); if (currency != mutable.value.currency) currencyGeneration++
+        persist(mutable.value.copy(currency = currency, initialized = true, failed = false))
     } }
     suspend fun setSeparate(separate: Boolean) = withContext(Dispatchers.IO) { mutex.withLock { persist(mutable.value.copy(separate = separate)) } }
 
     /** Daily calls fill missing historical rates and update today's quotes. Manual refresh also rechecks history. */
-    suspend fun refresh(entries: List<LedgerEntry>, force: Boolean = false): Boolean = withContext(Dispatchers.IO) { mutex.withLock {
-        val start = mutable.value
-        mutable.value = start.copy(refreshing = true, failed = false)
+    suspend fun refresh(entries: List<LedgerEntry>, force: Boolean = false): Boolean = withContext(Dispatchers.IO) { refreshMutex.withLock {
+        val (start, generation) = mutex.withLock {
+            val start = mutable.value
+            mutable.value = start.copy(refreshing = true, failed = false)
+            start to currencyGeneration
+        }
         val today = Instant.ofEpochMilli(clock()).atZone(ZoneId.systemDefault()).toLocalDate()
         val foreign = entries.filter { !it.deleted && it.draft.currency != start.currency && !(it.draft.exchangeRate != null && it.draft.exchangeRateCurrency == start.currency) }
         val wanted = foreign.groupBy { it.draft.currency }.mapValues { (_, rows) ->
@@ -137,10 +144,16 @@ class FxRepository(context: Context, private val client: FxRateClient = Frankfur
                 } catch (cancelled: CancellationException) { throw cancelled }
                 catch (_: Exception) { failed = true }
             }
-            persist(start.copy(quotes = cache, lastChecked = clock(), failed = failed))
+            mutex.withLock {
+                val current = mutable.value
+                val sameCurrency = generation == currencyGeneration
+                persist(current.copy(quotes = current.quotes + cache, refreshing = false,
+                    lastChecked = if (sameCurrency) clock() else current.lastChecked, failed = sameCurrency && failed))
+            }
             !failed
         } catch (cancelled: CancellationException) {
-            mutable.value = start.copy(quotes = cache); throw cancelled
-        } catch (_: Exception) { mutable.value = start.copy(quotes = cache, failed = true); false }
+            kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) { mutex.withLock { mutable.value = mutable.value.copy(refreshing = false) } }
+            throw cancelled
+        } catch (_: Exception) { mutex.withLock { mutable.value = mutable.value.copy(refreshing = false, failed = generation == currencyGeneration) }; false }
     } }
 }

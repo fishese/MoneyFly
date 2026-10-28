@@ -27,7 +27,10 @@
     <string name="security_encrypt">Encrypt database</string>
     <string name="security_encrypt_confirm">MoneyFly will close and encrypt a verified copy when it next starts. Create a backup first. The device key remains available to background notification capture. Reopen MoneyFly after it closes.</string>
     <string name="security_encrypt_restart">Encrypt and close</string>
-    <string name="security_storage_open_failed">MoneyFly could not open its data. Please restart the app. If the problem continues, keep the app installed and contact support before clearing its data.</string>
+    <string name="security_storage_open_failed">MoneyFly could not open its data. Check available storage and try again. Keep the app installed to preserve your data.</string>
+    <string name="security_storage_retry">Try again</string>
+    <string name="security_storage_cancel_encryption">Cancel encryption and open original data</string>
+    <string name="backup_interrupted">Restore was interrupted. Choose the backup and enter its password again.</string>
     <string name="backup_title">Backup and restore</string>
     <string name="backup_description">Save an encrypted backup of entries, rules, templates and retained Inbox messages. Keep your password to restore it. App lock, currency settings and exchange rates need to be set up again on another device.</string>
     <string name="backup_create">Create backup</string>

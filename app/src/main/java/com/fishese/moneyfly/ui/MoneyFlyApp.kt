@@ -176,6 +176,8 @@ fun MoneyFlyApp(store: LedgerStore, captureController: CaptureController? = null
             },
             floatingActionButton = { if (destination == 0 && !selecting) ExtendedFloatingActionButton(modifier = Modifier.testTag("add_entry").semantics { contentDescription = addExpenseLabel }, onClick = { editorId = "new"; editingRevision = 0 }, icon = { Icon(Icons.Default.Add, null) }, text = { Text(addExpenseLabel) }, containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary) },
         ) { padding ->
+            val destinationStates = androidx.compose.runtime.saveable.rememberSaveableStateHolder()
+            destinationStates.SaveableStateProvider(destination) {
             when (destination) {
                 0 -> Transactions(entries, categories, accounts, Modifier.padding(padding), pendingCount = pendingCount, onPendingInbox = { destination = 1 },
                     fx = if (fxRepository == null) null else fxState,
@@ -196,6 +198,7 @@ fun MoneyFlyApp(store: LedgerStore, captureController: CaptureController? = null
                     record = { receipt, separate -> receiptId = receipt.id; receiptRevision = receipt.revision; separatePurchase = separate },
                     viewEntry = { entry -> editorId = entry.id; editingRevision = entry.revision }, createTemplate = { templateReceiptId = it.id })
                 2 -> Settings(categories, accounts, aliases, rules, accountRules, sources, templates, ignoreRules, Modifier.padding(padding), store, fxRepository, fxState, entries, captureController) { command, done -> run(command, done = done) }
+            }
             }
         }
         editorId?.let { id ->

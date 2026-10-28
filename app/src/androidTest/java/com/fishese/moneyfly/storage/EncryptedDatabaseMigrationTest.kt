@@ -41,6 +41,11 @@ class EncryptedDatabaseMigrationTest {
             assertEquals("synthetic invalid database", source.readText())
             assertFalse(encrypted.exists())
             assertFalse(EncryptedStorage.isEnabled(context))
+            assertTrue(EncryptedStorage.canCancelPending(context))
+            EncryptedStorage.cancelPending(context)
+            assertFalse(EncryptedStorage.canCancelPending(context))
+            assertEquals(EncryptedStorage.PLAIN_NAME, EncryptedStorage.prepare(context).first)
+            assertEquals("synthetic invalid database", source.readText())
         } finally {
             context.getSharedPreferences("encrypted_storage_v1", Context.MODE_PRIVATE).edit().clear().commit()
             context.getSharedPreferences("database_key_v1", Context.MODE_PRIVATE).edit().clear().commit()

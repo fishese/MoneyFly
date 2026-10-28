@@ -54,7 +54,8 @@ internal fun AppLockScreen(activity: Activity, manager: AppLockManager, biometri
         onDispose { lifecycle.removeObserver(observer) }
     }
     DisposableEffect(biometric, resumed) {
-        val signal = if (biometric && resumed && biometricAvailable(activity)) requestBiometric(activity, { manager.unlock() }, {}) else null
+        val generation = manager.authGeneration()
+        val signal = if (biometric && resumed && biometricAvailable(activity)) requestBiometric(activity, { manager.unlock(generation) }, {}) else null
         onDispose { signal?.cancel() }
     }
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -66,13 +67,13 @@ internal fun AppLockScreen(activity: Activity, manager: AppLockManager, biometri
                 modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp).testTag("unlock_password"))
             if (error) Text(stringResource(R.string.security_wrong_password), color = MaterialTheme.colorScheme.error)
             Button(onClick = {
-                val candidate = password.toCharArray(); password = ""; busy = true
+                val candidate = password.toCharArray(); val generation = manager.authGeneration(); password = ""; busy = true
                 scope.launch {
-                    try { if (manager.verify(candidate)) manager.unlock() else error = true }
+                    try { if (manager.verify(candidate)) manager.unlock(generation) else error = true }
                     finally { candidate.fill('\u0000'); busy = false }
                 }
             }, enabled = !busy && password.isNotEmpty(), modifier = Modifier.fillMaxWidth().testTag("unlock_submit")) { Text(stringResource(R.string.security_unlock)) }
-            if (biometric && biometricAvailable(activity)) TextButton(onClick = { requestBiometric(activity, { manager.unlock() }, {}) }) { Text(stringResource(R.string.security_unlock_biometric)) }
+            if (biometric && biometricAvailable(activity)) TextButton(onClick = { manager.authGeneration().let { generation -> requestBiometric(activity, { manager.unlock(generation) }, {}) } }) { Text(stringResource(R.string.security_unlock_biometric)) }
         }
     }
 }

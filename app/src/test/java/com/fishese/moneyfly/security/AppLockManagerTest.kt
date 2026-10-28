@@ -21,6 +21,7 @@ class AppLockManagerTest {
         assertFalse(manager.state.value.locked)
         manager.lock()
         assertTrue(manager.state.value.locked)
+        manager.onForeground()
         assertFalse(manager.verify("incorrect".toCharArray()))
         assertTrue(manager.verify(password))
         manager.unlock()
