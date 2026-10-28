@@ -41,5 +41,20 @@ object StarterTemplates {
         )
     }
 
-    val definitions: List<TemplateDefinition> = octopus + wallet + aeon
+    // Generic labels from an observed email format; transaction-specific text is never bundled.
+    private val emailCardAlert = TemplateDefinition(
+        id = "starter-email-card-alert-v1", name = "HSBC credit card transaction email", sourcePackage = "com.google.android.gm",
+        patterns = listOf(FieldPattern(MessageField.BIG_TEXT, listOf(
+            PatternSegment.Literal("HSBC Credit Card Transaction Notification\nCredit card number\nEnding with "),
+            PatternSegment.Slot(SlotName.ACCOUNT_HINT), PatternSegment.Literal("\nMerchant\n"),
+            PatternSegment.Slot(SlotName.MERCHANT), PatternSegment.Literal("\nDate\n"),
+            PatternSegment.Slot(SlotName.VARIABLE), PatternSegment.Literal("\nAmount\n"),
+            PatternSegment.Slot(SlotName.CURRENCY), PatternSegment.Slot(SlotName.AMOUNT, 64, numericOnly = true),
+            PatternSegment.Literal("\n"),
+        ), section = true)),
+        currencyTokens = commonCurrencyTokens, numberConvention = NumberConvention.DECIMAL_DOT_GROUP_COMMA,
+        enabled = true, revision = 1,
+    )
+
+    val definitions: List<TemplateDefinition> = octopus + wallet + aeon + emailCardAlert
 }

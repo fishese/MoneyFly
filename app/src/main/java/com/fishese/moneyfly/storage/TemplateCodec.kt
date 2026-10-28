@@ -13,15 +13,15 @@ internal object TemplateCodec {
         put("id", d.id); put("name", d.name); put("source", d.sourcePackage); put("revision", d.revision); put("enabled", d.enabled)
         put("kind", d.kind.name); put("currency", d.fixedCurrency ?: JSONObject.NULL); put("evidence", d.fixedCurrencyEvidence?.name ?: JSONObject.NULL)
         put("merchant", d.fixedMerchant ?: JSONObject.NULL); put("numbers", d.numberConvention.name)
-        put("patterns", JSONArray(d.patterns.map { p -> JSONObject().apply { put("field", p.field.name); put("segments", JSONArray(p.segments.map { s -> JSONObject().apply {
-            when (s) { is PatternSegment.Literal -> put("literal", s.text); is PatternSegment.Slot -> { put("slot", s.name.name); put("max", s.maxLength); if (s.numericOnly) put("numeric", true) } }
+        put("patterns", JSONArray(d.patterns.map { p -> JSONObject().apply { put("field", p.field.name); if (p.section) put("section", true); put("segments", JSONArray(p.segments.map { s -> JSONObject().apply {
+            when (s) { is PatternSegment.Literal -> put("literal", s.text); is PatternSegment.Slot -> { put("slot", s.name.name); put("max", s.maxLength); if (s.numericOnly) put("numeric", true); if (s.linked) put("linked", true) } }
         } })) } }))
         put("predicates", JSONArray(d.predicates.map { p -> JSONObject().apply { put("field", p.field.name); put("operation", p.operation.name); put("literal", p.literal); put("ignoreCase", p.ignoreCase) } }))
         put("tokens", JSONArray(d.currencyTokens.map { t -> JSONObject().apply { put("token", t.token); put("currency", t.currency); put("confirmed", t.userConfirmedAmbiguous) } }))
     }.toString()
     fun decode(json: String): TemplateDefinition = JSONObject(json).let { j -> TemplateDefinition(j.getString("id"), j.getString("name"), j.getString("source"),
         j.getJSONArray("patterns").objects().map { p -> FieldPattern(MessageField.valueOf(p.getString("field")), p.getJSONArray("segments").objects().map { s ->
-            if (s.has("literal")) PatternSegment.Literal(s.getString("literal")) else PatternSegment.Slot(SlotName.valueOf(s.getString("slot")), s.getInt("max"), s.optBoolean("numeric", false)) }) },
+            if (s.has("literal")) PatternSegment.Literal(s.getString("literal")) else PatternSegment.Slot(SlotName.valueOf(s.getString("slot")), s.getInt("max"), s.optBoolean("numeric", false), s.optBoolean("linked", false)) }, p.optBoolean("section", false)) },
         j.getJSONArray("predicates").objects().map { p -> TemplatePredicate(MessageField.valueOf(p.getString("field")), PredicateOperation.valueOf(p.getString("operation")), p.getString("literal"), p.getBoolean("ignoreCase")) },
         EntryKind.valueOf(j.getString("kind")), j.optional("currency"), j.optional("evidence")?.let { FixedCurrencyEvidence.valueOf(it) }, j.optional("merchant"),
         j.getJSONArray("tokens").objects().map { t -> CurrencyToken(t.getString("token"), t.getString("currency"), t.getBoolean("confirmed")) }, NumberConvention.valueOf(j.getString("numbers")), j.getBoolean("enabled"), j.getLong("revision")) }

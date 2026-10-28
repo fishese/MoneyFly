@@ -21,8 +21,8 @@ object TemplateEngine {
             require(close >= 0) { "Close the field placeholder." }
             val name = when (expression.substring(open + 1, close)) {
                 "amount" -> SlotName.AMOUNT; "currency" -> SlotName.CURRENCY; "merchant" -> SlotName.MERCHANT
-                "reference" -> SlotName.REFERENCE; "notes" -> SlotName.NOTES; "accountHint" -> SlotName.ACCOUNT_HINT
-                "variable" -> SlotName.VARIABLE
+                "reference" -> SlotName.REFERENCE; "notes" -> SlotName.NOTES; "accountHint", "account_hint" -> SlotName.ACCOUNT_HINT
+                "variable" -> SlotName.VARIABLE; "date" -> SlotName.DATE
                 else -> throw IllegalArgumentException("Use a supported field placeholder.")
             }
             segments += PatternSegment.Slot(name, if (name == SlotName.AMOUNT) 64 else 256)
@@ -36,14 +36,29 @@ object TemplateEngine {
         if (d.id.isBlank() || d.id.length > 128 || d.name.isBlank() || d.name.length > 120 || d.sourcePackage.isBlank() || d.sourcePackage.length > 256) add("Enter a template name and source app within the supported limits.")
         if (d.patterns.size !in 1..4 || d.patterns.map { it.field }.distinct().size != d.patterns.size) add("Use one to four different notification fields.")
         val slots = d.patterns.flatMap { it.segments }.filterIsInstance<PatternSegment.Slot>()
-        if (slots.map { it.name }.distinct().size != slots.size) add("Each extracted field can appear only once.")
+        if (slots.groupBy { it.name }.values.any { group -> group.size > 1 && group.any { !it.linked } }) add("Link repeated occurrences of the same extracted field.")
         if (slots.none { it.name == SlotName.AMOUNT }) add("Select an amount field.")
         for (p in d.patterns) {
             val wholeFieldMerchant = p.segments == listOf(PatternSegment.Slot(SlotName.MERCHANT)) &&
                 d.patterns.size > 1 && d.patterns.any { other -> other.field != p.field && other.segments.any { it is PatternSegment.Literal } }
+            if (p.section) {
+                val first = (p.segments.firstOrNull() as? PatternSegment.Literal)?.text
+                val last = (p.segments.lastOrNull() as? PatternSegment.Literal)?.text
+                val endsWithNumericLine = last == "\n" && (p.segments.getOrNull(p.segments.lastIndex - 1) as? PatternSegment.Slot)?.let { it.name == SlotName.AMOUNT && it.numericOnly } == true &&
+                    (first?.count { it.isLetterOrDigit() } ?: 0) >= 12
+                if (first.isNullOrBlank() || (last.isNullOrBlank() && !endsWithNumericLine)) add("A selected section needs fixed text before and after its fields.")
+                else if ((first + last).count { it.isLetterOrDigit() } < 4) add("Include more identifying text around the selected section.")
+            }
             if (p.segments.size !in 2..32 && !wholeFieldMerchant) add("A pattern needs 2–32 literal or field segments.")
             if (p.segments.any { it is PatternSegment.Literal && it.text.isEmpty() }) add("Literal segments cannot be empty.")
-            if (p.segments.zipWithNext().any { it.first is PatternSegment.Slot && it.second is PatternSegment.Slot }) add("Separate extracted fields with literal text.")
+            val adjacent = p.segments.zipWithNext().filter { it.first is PatternSegment.Slot && it.second is PatternSegment.Slot }
+            val currencyAmount = adjacent.all { (a, b) ->
+                val first = a as PatternSegment.Slot; val second = b as PatternSegment.Slot
+                setOf(first.name, second.name) == setOf(SlotName.CURRENCY, SlotName.AMOUNT) &&
+                    listOf(first, second).first { it.name == SlotName.AMOUNT }.numericOnly &&
+                    d.currencyTokens.isNotEmpty() && d.currencyTokens.all { token -> token.token.none(Char::isDigit) }
+            }
+            if (adjacent.isNotEmpty() && !currencyAmount) add("Separate extracted fields with literal text, or select a confirmed currency next to a numeric amount.")
             if (p.segments.filterIsInstance<PatternSegment.Slot>().any { it.maxLength !in 1..4096 }) add("Extracted field lengths must be 1–4096.")
             if (p.segments.filterIsInstance<PatternSegment.Slot>().any { it.numericOnly && it.name != SlotName.AMOUNT }) add("Only amount fields can use numeric boundaries.")
         }
@@ -127,6 +142,7 @@ object TemplateEngine {
                         SlotName.ACCOUNT_HINT -> (if (index == 0) "A LABEL" else "B LABEL").take(segment.maxLength)
                         SlotName.NOTES -> (if (index == 0) "A SYNTHETIC NOTE" else "B SYNTHETIC NOTE").take(segment.maxLength)
                         SlotName.VARIABLE -> (if (index == 0) "A VARYING TEXT" else "B DIFFERENT TEXT").take(segment.maxLength)
+                        SlotName.DATE -> if (index == 0) "2026-01-02" else "2026-02-03"
                     }
                 }
             }
@@ -158,11 +174,17 @@ object TemplateEngine {
         }
         val values = mutableMapOf<SlotName, String>()
         for (pattern in d.patterns) {
-            val matched = assignments(field(p, pattern.field), pattern.segments, budget)
+            val hasAdjacentCurrency = pattern.segments.zipWithNext().any { (a, b) -> a is PatternSegment.Slot && b is PatternSegment.Slot && (a.name == SlotName.CURRENCY || b.name == SlotName.CURRENCY) }
+            val tokens = if (hasAdjacentCurrency) d.currencyTokens.map { it.token }.toSet() else null
+            val matched = if (pattern.section) sectionAssignments(field(p, pattern.field), pattern.segments, budget, tokens) else assignments(field(p, pattern.field), pattern.segments, budget, tokens)
             if (matched.exhausted) return review("The pattern exceeded the bounded matching work limit.")
-            if (matched.values.size > 1) return review("Repeated delimiters allow multiple field assignments. Adjust the boundaries.")
+            if (matched.conflict) return review("Linked occurrences disagree. Review this notification manually.")
+            if (matched.values.size > 1) return review("The section or delimiters match more than once. Adjust the boundaries.")
             if (matched.values.isEmpty()) return RecognitionResult(RecognitionStatus.NO_MATCH)
-            values.putAll(matched.values.single())
+            for ((key, value) in matched.values.single()) {
+                if (key in values && values[key] != value) return review("Linked occurrences disagree. Review this notification manually.")
+                values[key] = value
+            }
         }
         return try {
             val currency = d.fixedCurrency ?: values[SlotName.CURRENCY]?.let { token -> d.currencyTokens.firstOrNull { it.token == token }?.currency ?: currencyAlias(token) }
@@ -170,48 +192,97 @@ object TemplateEngine {
             val amount = Money.normalize(parseNumber(values.getValue(SlotName.AMOUNT), d.numberConvention), currency)
             val merchant = values[SlotName.MERCHANT] ?: d.fixedMerchant.orEmpty()
             require(merchant.length <= 2000 && (SlotName.MERCHANT !in values || merchant.isNotBlank())) { "The merchant field is empty or too long." }
+            val selectedDate = values[SlotName.DATE]?.let { value ->
+                require(Regex("[0-9]{4}-[0-9]{2}-[0-9]{2}").matches(value)) { "Date must use YYYY-MM-DD." }
+                try { java.time.LocalDate.parse(value) } catch (_: java.time.DateTimeException) { throw IllegalArgumentException("Date must be a valid YYYY-MM-DD date.") }
+            }
+            val occurredAt = selectedDate?.atStartOfDay(java.time.ZoneId.systemDefault())?.toInstant() ?: p.postedAt
             val issues = buildList {
-                add("Date uses notification posting time; original transaction time is unknown.")
+                if (selectedDate == null) add("Date uses notification posting time; original transaction time is unknown.")
+                else add("Date was extracted; the transaction time is unknown.")
                 if (merchant.isBlank()) add("Merchant was not provided; add it while reviewing this entry.")
                 if (d.fixedCurrencyEvidence == FixedCurrencyEvidence.USER_CONFIRMED_ASSUMPTION || d.currencyTokens.any { it.token == values[SlotName.CURRENCY] && it.userConfirmedAmbiguous }) add("Currency uses a user-confirmed $currency assumption.")
                 if (SlotName.ACCOUNT_HINT in values) add("An account hint was found; choose an account label manually.")
             }
-            RecognitionResult(RecognitionStatus.READY, EntryDraft(amount, currency, d.kind, p.postedAt, merchant, values[SlotName.NOTES].orEmpty(), sourcePackage = p.sourcePackage,
-                timeOrigin = TimeOrigin.NOTIFICATION_POSTED, timePrecision = TimePrecision.UNKNOWN), issues, d.id, d.revision)
+            RecognitionResult(RecognitionStatus.READY, EntryDraft(amount, currency, d.kind, occurredAt, merchant, values[SlotName.NOTES].orEmpty(), sourcePackage = p.sourcePackage,
+                timeOrigin = if (selectedDate == null) TimeOrigin.NOTIFICATION_POSTED else TimeOrigin.EXTRACTED,
+                timePrecision = if (selectedDate == null) TimePrecision.UNKNOWN else TimePrecision.DATE), issues, d.id, d.revision)
         } catch (e: IllegalArgumentException) { review(e.message ?: "Matched fields need review.") }
     }
 
-    private data class Assignments(val values: List<Map<SlotName, String>>, val exhausted: Boolean)
-    private fun assignments(text: String, segments: List<PatternSegment>, budget: WorkBudget): Assignments {
+    private data class Assignments(val values: List<Map<SlotName, String>>, val exhausted: Boolean, val conflict: Boolean = false)
+    private fun assignments(text: String, segments: List<PatternSegment>, budget: WorkBudget, currencyTokens: Set<String>? = null): Assignments {
         val results = mutableListOf<Map<SlotName, String>>()
         var exhausted = false
-        fun visit(index: Int, position: Int, values: Map<SlotName, String>) {
+        var conflict = false
+        fun visit(index: Int, position: Int, values: Map<SlotName, String>, differs: Boolean = false) {
             if (!budget.use()) { exhausted = true; return }
             if (results.size >= 2 || exhausted) return
-            if (index == segments.size) { if (position == text.length) results += values; return }
+            if (index == segments.size) { if (position == text.length) { results += values; conflict = conflict || differs }; return }
             when (val segment = segments[index]) {
                 is PatternSegment.Literal -> {
                     val literal = FinancialIdentity.canonicalText(segment.text)
                     if (!budget.use(literal.length)) { exhausted = true; return }
-                    if (text.startsWith(literal, position)) visit(index + 1, position + literal.length, values)
+                    if (text.startsWith(literal, position)) visit(index + 1, position + literal.length, values, differs)
                 }
                 is PatternSegment.Slot -> {
                     val max = minOf(text.length, position + segment.maxLength)
                     val nextLiteral = (segments.getOrNull(index + 1) as? PatternSegment.Literal)?.let { FinancialIdentity.canonicalText(it.text) }
                     if (index == segments.lastIndex) {
-                        if (text.length in (position + 1)..max) visit(index + 1, text.length, values + (segment.name to text.substring(position)))
+                        if (text.length in (position + 1)..max) {
+                            val part = text.substring(position)
+                            if ((!segment.numericOnly || part.all { it.isDigit() || it == '.' || it == ',' }) &&
+                                (segment.name != SlotName.CURRENCY || currencyTokens == null || part in currencyTokens))
+                                visit(index + 1, text.length, values + (segment.name to part), differs || (segment.name in values && values[segment.name] != part))
+                        }
                     } else for (end in (position + 1)..max) {
-                        if (!budget.use(1 + (nextLiteral?.length ?: 0))) { exhausted = true; break }
-                        if (segment.numericOnly && text.substring(position, end).any { !it.isDigit() && it != '.' && it != ',' }) continue
-                        if (nextLiteral != null && !text.startsWith(nextLiteral, end)) continue
-                        visit(index + 1, end, values + (segment.name to text.substring(position, end)))
+                        if (!budget.use()) { exhausted = true; break }
+                        if (segment.numericOnly && !text[end - 1].isDigit() && text[end - 1] != '.' && text[end - 1] != ',') break
+                        val part = text.substring(position, end)
+                        if (segment.name == SlotName.CURRENCY && currencyTokens != null) {
+                            if (currencyTokens.none { it.startsWith(part) }) break
+                            if (part !in currencyTokens) continue
+                        }
+                        if (nextLiteral != null) {
+                            if (end + nextLiteral.length > text.length) continue
+                            var matchedLiteral = true
+                            for (i in nextLiteral.indices) {
+                                if (!budget.use()) { exhausted = true; matchedLiteral = false; break }
+                                if (text[end + i] != nextLiteral[i]) { matchedLiteral = false; break }
+                            }
+                            if (exhausted) break
+                            if (!matchedLiteral) continue
+                        }
+                        visit(index + 1, end, values + (segment.name to part), differs || (segment.name in values && values[segment.name] != part))
                         if (results.size >= 2 || exhausted) break
                     }
                 }
             }
         }
         visit(0, 0, emptyMap())
-        return Assignments(results, exhausted)
+        return Assignments(results, exhausted, conflict)
+    }
+
+    private fun sectionAssignments(text: String, segments: List<PatternSegment>, budget: WorkBudget, currencyTokens: Set<String>?): Assignments {
+        val prefix = FinancialIdentity.canonicalText((segments.first() as PatternSegment.Literal).text)
+        val suffix = FinancialIdentity.canonicalText((segments.last() as PatternSegment.Literal).text)
+        val results = mutableListOf<Map<SlotName, String>>()
+        var conflict = false
+        var start = text.indexOf(prefix)
+        while (start >= 0) {
+            var end = text.indexOf(suffix, start + prefix.length)
+            while (end >= 0) {
+                if (!budget.use(1 + end - start)) return Assignments(results, true, conflict)
+                val found = assignments(text.substring(start, end + suffix.length), segments, budget, currencyTokens)
+                if (found.exhausted) return Assignments(results, true, conflict || found.conflict)
+                results.addAll(found.values)
+                conflict = conflict || found.conflict
+                if (results.size > 1) return Assignments(results, false, conflict)
+                end = text.indexOf(suffix, end + 1)
+            }
+            start = text.indexOf(prefix, start + 1)
+        }
+        return Assignments(results, false, conflict)
     }
 
     private fun parseNumber(text: String, convention: NumberConvention): String {

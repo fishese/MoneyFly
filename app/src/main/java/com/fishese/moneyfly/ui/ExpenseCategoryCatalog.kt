@@ -34,7 +34,7 @@ internal val expenseCategoryCatalog = listOf(
     ExpenseCategoryOption("groceries", R.string.category_groceries, "Groceries", "日常雜貨", true),
     ExpenseCategoryOption("bills", R.string.category_bills, "Bills", "帳單", true),
     ExpenseCategoryOption("health", R.string.category_health, "Health", "健康", true),
-    ExpenseCategoryOption("travel", R.string.category_travel, "Travel", "旅遊"),
+    ExpenseCategoryOption("travel", R.string.category_travel, "Travel", "旅遊", true),
     ExpenseCategoryOption("education", R.string.category_education, "Education", "教育"),
     ExpenseCategoryOption("gifts", R.string.category_gifts, "Gifts", "禮物"),
     ExpenseCategoryOption("subscriptions", R.string.category_subscriptions, "Subscriptions", "訂閱"),
@@ -55,8 +55,8 @@ internal suspend fun seedExpenseCategories(context: Context, store: LedgerStore)
     val preferences = context.getSharedPreferences(CATEGORY_STARTER_PREFERENCES, Context.MODE_PRIVATE)
     val oldCompleted = preferences.getBoolean("completed", false)
     for (option in expenseCategoryCatalog.filter { it.starter }) {
-        // A completed v1 installation only needs the newly added category.
-        if (oldCompleted && option.key != "snacks") continue
+        // Existing installations receive new starter categories once, without restoring older deletions.
+        if (oldCompleted && option.key !in setOf("snacks", "travel")) continue
         if (preferences.getBoolean("${option.key}.done", false)) continue
         if (store.categories.first().any { option.matches(it.name) }) {
             if (!preferences.edit().putBoolean("${option.key}.done", true).commit()) return@withLock false

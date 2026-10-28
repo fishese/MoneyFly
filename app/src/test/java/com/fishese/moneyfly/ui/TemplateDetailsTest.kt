@@ -35,6 +35,14 @@ class TemplateDetailsTest {
         compose.onNodeWithText("Synthetic completed", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
     }
 
+    @Test fun viewerCanOpenEditor() {
+        val definition = template()
+        var opened = false
+        compose.setContent { MaterialTheme { TemplateDetails(definition, listOf(definition), {}, { opened = true }) } }
+        compose.onNodeWithTag("template_details_edit").performClick()
+        compose.runOnIdle { assertTrue(opened) }
+    }
+
     @Test fun settingsShowsIdenticalCopiesAndPersistedApplyCounts() {
         val definition = template()
         val store = FakeStore()

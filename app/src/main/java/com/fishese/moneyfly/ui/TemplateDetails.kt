@@ -24,7 +24,7 @@ internal fun FieldPattern.displayPattern(): String = segments.joinToString("") {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun TemplateDetails(template: TemplateDefinition, templates: List<TemplateDefinition>, close: () -> Unit) {
+internal fun TemplateDetails(template: TemplateDefinition, templates: List<TemplateDefinition>, close: () -> Unit, edit: (() -> Unit)? = null) {
     Dialog(onDismissRequest = close, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         DialogSystemBars()
         Surface(Modifier.fillMaxSize()) {
@@ -32,6 +32,7 @@ internal fun TemplateDetails(template: TemplateDefinition, templates: List<Templ
                 navigationIcon = { TextButton(onClick = close) { Text(stringResource(R.string.cancel)) } }) }) { padding ->
                 Column(Modifier.padding(padding).verticalScroll(rememberScrollState()).padding(20.dp).testTag("template_details"), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     Text(template.name, style = MaterialTheme.typography.headlineSmall)
+                    if (edit != null) OutlinedButton(onClick = edit, modifier = Modifier.testTag("template_details_edit")) { Text(stringResource(R.string.template_edit)) }
                     SelectionContainer { Text(template.sourcePackage) }
                     Text(stringResource(R.string.template_identity, template.id, template.revision), style = MaterialTheme.typography.bodySmall)
                     Text(stringResource(if (template.enabled) R.string.template_enabled else R.string.template_disabled))
@@ -44,8 +45,10 @@ internal fun TemplateDetails(template: TemplateDefinition, templates: List<Templ
                     Text(stringResource(R.string.template_pattern_help), style = MaterialTheme.typography.bodySmall)
                     template.patterns.forEach { pattern ->
                         Text(messageFieldLabel(pattern.field), style = MaterialTheme.typography.labelLarge)
+                        if (pattern.section) Text(stringResource(R.string.teacher_section_detail), style = MaterialTheme.typography.bodySmall)
                         SelectionContainer { Text(pattern.displayPattern(), modifier = Modifier.testTag("template_pattern_${pattern.field.name}")) }
                         pattern.segments.filterIsInstance<PatternSegment.Slot>().forEach { slot ->
+                            if (slot.linked) Text(stringResource(R.string.teacher_linked_detail, slot.name.name.lowercase()), style = MaterialTheme.typography.bodySmall)
                             Text(stringResource(R.string.template_slot_details, slot.name.name.lowercase(), slot.maxLength,
                                 stringResource(if (slot.numericOnly) R.string.template_slot_numeric else R.string.template_slot_text)), style = MaterialTheme.typography.bodySmall)
                         }

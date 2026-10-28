@@ -18,7 +18,6 @@ import androidx.compose.material3.Text
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.material3.MaterialTheme
-import android.view.WindowManager
 import com.fishese.moneyfly.ui.AppLockScreen
 import androidx.activity.result.contract.ActivityResultContracts
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -106,10 +105,6 @@ class MainActivity : ComponentActivity() {
         setContent {
             val app = application as MoneyFlyApplication
             val lock by app.appLock.state.collectAsStateWithLifecycle()
-            androidx.compose.runtime.SideEffect {
-                if (lock.configured) window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
-                else window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
-            }
             val holder = rememberSaveableStateHolder()
             if (lock.locked) MaterialTheme { AppLockScreen(this, app.appLock, lock.biometric) }
             else if (readyStore != null) holder.SaveableStateProvider("app") { MoneyFlyApp(readyStore!!, app.captureController, app.fxRepository) }

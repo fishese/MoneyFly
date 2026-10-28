@@ -3,6 +3,7 @@ package com.fishese.moneyfly.ui
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.*
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.junit4.createComposeRule
 import com.fishese.moneyfly.capture.*
 import com.fishese.moneyfly.ledger.*
@@ -91,6 +92,59 @@ class SuggestedTemplateStartTest {
             assertNull(command.definition.fixedMerchant)
             assertTrue(command.definition.patterns.flatMap { it.segments }.filterIsInstance<com.fishese.moneyfly.recognition.PatternSegment.Slot>().none { it.name == com.fishese.moneyfly.recognition.SlotName.MERCHANT })
         }
+    }
+
+    @Test fun selectionTeachesAmountInMessageAndMerchantInTitle() {
+        val store = FakeStore()
+        val closed = mutableStateOf(false)
+        show(store, receipt("unknown.synthetic", "Paid 12.34."), closed)
+        compose.onNodeWithTag("template_name").performTextInput("Synthetic format")
+        compose.onNodeWithTag("teacher_text_BODY").performScrollTo().performTextInputSelection(androidx.compose.ui.text.TextRange(5, 10))
+        compose.onNodeWithTag("teacher_slot_MERCHANT").performSemanticsAction(SemanticsActions.OnClick).assertIsSelected()
+        compose.onNodeWithTag("teacher_text_TITLE").performScrollTo().performTextInputSelection(androidx.compose.ui.text.TextRange(0, 14))
+        compose.onNodeWithTag("confirm_template_currency").performScrollTo().performClick()
+        compose.onNodeWithTag("preview_template").performScrollTo().performClick()
+        compose.onNodeWithTag("template_pattern_BODY").assertDoesNotExist()
+        compose.onNodeWithTag("template_pattern_toggle_BODY").performScrollTo().performClick()
+        compose.onNodeWithTag("template_pattern_BODY").assertExists()
+        compose.onNodeWithTag("save_template").assertIsEnabled().performClick()
+        compose.waitUntil { closed.value }
+        compose.runOnIdle {
+            val definition = (store.commands.single() as LedgerCommand.PutTemplate).definition
+            assertEquals(setOf(com.fishese.moneyfly.recognition.MessageField.TITLE, com.fishese.moneyfly.recognition.MessageField.BODY), definition.patterns.map { it.field }.toSet())
+            assertTrue(com.fishese.moneyfly.recognition.TemplateEngine.preview(definition, receipt("unknown.synthetic", "Paid 12.34.").payload!!).canEnable)
+        }
+    }
+
+    @Test fun accountHintIsAssignedImmediatelyAndFieldPickerStaysVisible() {
+        show(FakeStore(), receipt("unknown.synthetic", "Account 1234; paid 12.34."))
+        compose.onNodeWithTag("teacher_slot_ACCOUNT_HINT").performSemanticsAction(SemanticsActions.OnClick)
+        compose.onNodeWithTag("teacher_text_BODY").performScrollTo().performTextInputSelection(androidx.compose.ui.text.TextRange(8, 12))
+        compose.onNodeWithTag("template_account_hint").performScrollTo().assertTextContains("1234")
+        compose.onNodeWithTag("teacher_field_bar").assertIsDisplayed()
+        compose.onNodeWithTag("teacher_slot_ACCOUNT_HINT").assertTextContains("✓", substring = true)
+        compose.onNodeWithTag("teacher_assign").assertDoesNotExist()
+    }
+
+    @Test fun preciseControlsStayVisibleAndAdjustAmountWithoutWordSnapping() {
+        show(FakeStore(), receipt("unknown.synthetic", "Paid HKD72.50 to synthetic shop."))
+        compose.onNodeWithTag("teacher_text_BODY").performScrollTo().performTextInputSelection(androidx.compose.ui.text.TextRange(5, 13))
+        compose.onNodeWithTag("template_amount").performScrollTo().assertTextContains("72.50")
+        compose.onNodeWithTag("precise_start_forward").assertIsDisplayed().performClick()
+        compose.onNodeWithTag("template_amount").assertTextContains("2.50")
+        compose.onNodeWithTag("precise_start_back").performClick()
+        compose.onNodeWithTag("template_amount").assertTextContains("72.50")
+        compose.onNodeWithTag("precise_start_drag").performTouchInput { swipeRight() }
+        compose.onNodeWithTag("template_amount").assert(!hasText("72.50", substring = true))
+    }
+
+    @Test fun preciseControlsAlsoAdjustMatchingSections() {
+        show(FakeStore(), receipt("unknown.synthetic", "Header Paid 12.34 confirmed. Footer"))
+        compose.onNodeWithTag("teacher_slot_section").performSemanticsAction(SemanticsActions.OnClick)
+        compose.onNodeWithTag("teacher_text_BODY").performScrollTo().performTextInputSelection(androidx.compose.ui.text.TextRange(7, 28))
+        compose.onNodeWithTag("precise_start_forward").assertIsDisplayed().performClick()
+        compose.onNodeWithTag("teacher_clear_section_BODY").assertExists()
+        compose.onNodeWithTag("teacher_slot_section").assertIsSelected()
     }
 
     private class FakeStore(private val failFirst: Boolean = false) : LedgerStore {

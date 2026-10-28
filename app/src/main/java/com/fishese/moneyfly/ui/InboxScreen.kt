@@ -42,6 +42,7 @@ internal fun InboxScreen(
     entries: List<LedgerEntry>, modifier: Modifier, hasTemplates: Boolean,
     execute: (LedgerCommand, (CommandResult) -> Unit) -> Unit,
     record: (InboxItem, Boolean) -> Unit, viewEntry: (LedgerEntry) -> Unit, createTemplate: (InboxItem) -> Unit,
+    editTemplate: (InboxItem) -> Unit = {}, canEditTemplate: (InboxItem) -> Boolean = { false },
 ) {
     val settingsFlow = remember(store) { store?.captureSettings ?: flowOf(CaptureSettings()) }
     val connectionFlow = remember(controller) { controller?.connection ?: flowOf(CaptureConnection()) }
@@ -160,7 +161,8 @@ internal fun InboxScreen(
                     ignoreSimilar = { similarItem = item },
                     ignoreApp = { ignoreSource = item.sourcePackage },
                     recordEntry = { record(item, false) },
-                    recordTemplate = { createTemplate(item) }) {
+                    recordTemplate = { createTemplate(item) },
+                    editTemplate = { editTemplate(item) }, canEditTemplate = canEditTemplate(item)) {
                 ReceiptCard(item, sourceNames[item.sourcePackage] ?: item.sourcePackage, sources.any { it.sourcePackage == item.sourcePackage && it.ignored }, entries, record, viewEntry,
                     ignore = ignoreItem,
                     ignoreSimilar = { similarItem = item },
@@ -233,12 +235,12 @@ private fun PendingReceiptSwipe(
     ignoreApp: () -> Unit,
     recordEntry: () -> Unit,
     recordTemplate: () -> Unit,
+    editTemplate: () -> Unit,
+    canEditTemplate: Boolean,
     content: @Composable () -> Unit,
 ) {
-    if (item.status != InboxStatus.UNRECOGNIZED && item.status != InboxStatus.REVIEW_NEEDED && item.status != InboxStatus.READY) {
-        content()
-        return
-    }
+    val pending = item.status == InboxStatus.UNRECOGNIZED || item.status == InboxStatus.REVIEW_NEEDED || item.status == InboxStatus.READY
+    if (!pending && !canEditTemplate) { content(); return }
     key(item.id, item.revision) {
         var choices by remember { mutableStateOf<SwipeChoices?>(null) }
         val state = rememberSwipeToDismissBoxState(confirmValueChange = { direction ->
@@ -248,7 +250,7 @@ private fun PendingReceiptSwipe(
                 else -> true
             }
         })
-        SwipeToDismissBox(state = state, modifier = Modifier.clip(MaterialTheme.shapes.medium).testTag("swipe_${item.id}"),
+        SwipeToDismissBox(state = state, enableDismissFromEndToStart = pending, modifier = Modifier.clip(MaterialTheme.shapes.medium).testTag("swipe_${item.id}"),
             backgroundContent = {
                 val ignoring = state.dismissDirection == SwipeToDismissBoxValue.EndToStart
                 Surface(Modifier.fillMaxSize(), color = if (ignoring) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.secondaryContainer) {
@@ -268,8 +270,11 @@ private fun PendingReceiptSwipe(
                             TextButton(onClick = { choices = null; ignoreSimilar() }, modifier = Modifier.fillMaxWidth().testTag("swipe_ignore_similar_${item.id}")) { Text(stringResource(R.string.ignore_choice_similar)) }
                             TextButton(onClick = { choices = null; ignoreApp() }, modifier = Modifier.fillMaxWidth().testTag("swipe_ignore_app_${item.id}")) { Text(stringResource(R.string.ignore_choice_app, sourceName)) }
                         } else {
-                            TextButton(onClick = { choices = null; recordEntry() }, modifier = Modifier.fillMaxWidth().testTag("swipe_record_entry_${item.id}")) { Text(stringResource(R.string.record_choice_entry)) }
-                            TextButton(onClick = { choices = null; recordTemplate() }, modifier = Modifier.fillMaxWidth().testTag("swipe_record_template_${item.id}")) { Text(stringResource(R.string.record_choice_template)) }
+                            if (pending) {
+                                TextButton(onClick = { choices = null; recordEntry() }, modifier = Modifier.fillMaxWidth().testTag("swipe_record_entry_${item.id}")) { Text(stringResource(R.string.record_choice_entry)) }
+                                TextButton(onClick = { choices = null; recordTemplate() }, modifier = Modifier.fillMaxWidth().testTag("swipe_record_template_${item.id}")) { Text(stringResource(R.string.record_choice_template)) }
+                            }
+                            if (canEditTemplate) TextButton(onClick = { choices = null; editTemplate() }, modifier = Modifier.fillMaxWidth().testTag("swipe_edit_template_${item.id}")) { Text(stringResource(R.string.template_edit)) }
                         }
                     }
             }

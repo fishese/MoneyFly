@@ -82,6 +82,8 @@ fun MoneyFlyApp(store: LedgerStore, captureController: CaptureController? = null
         var receiptRevision by rememberSaveable { mutableLongStateOf(0) }
         var separatePurchase by rememberSaveable { mutableStateOf(false) }
         var templateReceiptId by rememberSaveable { mutableStateOf<String?>(null) }
+        var editingTemplateId by remember { mutableStateOf<String?>(null) }
+        var chooseTemplateSource by remember { mutableStateOf<String?>(null) }
         var selecting by rememberSaveable { mutableStateOf(false) }
         var selectedIds by rememberSaveable { mutableStateOf(listOf<String>()) }
         var swipeEntry by remember { mutableStateOf<LedgerEntry?>(null) }
@@ -196,7 +198,12 @@ fun MoneyFlyApp(store: LedgerStore, captureController: CaptureController? = null
                     }) { editorId = it.id; editingRevision = it.revision }
                 1 -> InboxScreen(inboxStore, captureController, inbox, sources, entries, Modifier.padding(padding), templates.isNotEmpty(), execute = { command, applied -> run(command, onApplied = applied) },
                     record = { receipt, separate -> receiptId = receipt.id; receiptRevision = receipt.revision; separatePurchase = separate },
-                    viewEntry = { entry -> editorId = entry.id; editingRevision = entry.revision }, createTemplate = { templateReceiptId = it.id })
+                    viewEntry = { entry -> editorId = entry.id; editingRevision = entry.revision }, createTemplate = { templateReceiptId = it.id },
+                    canEditTemplate = { item -> templates.any { it.sourcePackage == item.sourcePackage } },
+                    editTemplate = { item ->
+                        val candidates = templates.filter { it.sourcePackage == item.sourcePackage }
+                        if (candidates.size == 1) editingTemplateId = candidates.single().id else chooseTemplateSource = item.sourcePackage
+                    })
                 2 -> Settings(categories, accounts, aliases, rules, accountRules, sources, templates, ignoreRules, Modifier.padding(padding), store, fxRepository, fxState, entries, captureController) { command, done -> run(command, done = done) }
             }
             }
@@ -223,6 +230,15 @@ fun MoneyFlyApp(store: LedgerStore, captureController: CaptureController? = null
             if (receipt != null) EntryEditor("receipt-$id", 0, null, categories, accounts, aliases, rules, store,
                 close = { receiptId = null }, saved = { _, _ -> receiptId = null }, delete = {},
                 receipt = receipt, receiptRevision = receiptRevision, separatePurchase = separatePurchase, recentEntries = entries, reportingCurrency = fxState.currency, fx = fxState, accountRules = accountRules)
+        }
+        editingTemplateId?.let { id -> templates.find { it.id == id }?.let { template -> TemplateEditor(template, store) { editingTemplateId = null } } }
+        chooseTemplateSource?.let { source ->
+            AlertDialog(onDismissRequest = { chooseTemplateSource = null }, title = { Text(stringResource(R.string.template_select_edit)) },
+                text = { Column(Modifier.verticalScroll(rememberScrollState())) {
+                    templates.filter { it.sourcePackage == source }.forEach { template ->
+                        TextButton(onClick = { chooseTemplateSource = null; editingTemplateId = template.id }, modifier = Modifier.fillMaxWidth().testTag("choose_edit_template_${template.id}")) { Text(template.name) }
+                    }
+                } }, confirmButton = { TextButton(onClick = { chooseTemplateSource = null }) { Text(stringResource(R.string.cancel)) } })
         }
         templateReceiptId?.let { id ->
             val item = inbox.find { it.id == id }

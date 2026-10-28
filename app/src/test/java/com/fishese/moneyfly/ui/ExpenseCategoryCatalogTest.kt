@@ -23,8 +23,8 @@ class ExpenseCategoryCatalogTest {
     @Test fun seedsStarterLabelsAndDoesNotRestoreDeletedOrRenameEditedLabels() = runBlocking {
         val store = CatalogTestStore()
         assertTrue(seedExpenseCategories(context, store))
-        assertEquals(setOf("Meals", "Snacks", "Entertainment", "Hobby", "Transportation", "Shopping", "Groceries", "Bills", "Health"), store.categories.value.map { it.name }.toSet())
-        assertEquals(9, store.commands.size)
+        assertEquals(setOf("Meals", "Snacks", "Entertainment", "Hobby", "Transportation", "Shopping", "Groceries", "Bills", "Health", "Travel"), store.categories.value.map { it.name }.toSet())
+        assertEquals(10, store.commands.size)
         val originalCommands = store.commands.toList()
         store.categories.value = store.categories.value.filterNot { it.name == "Meals" }.map { if (it.name == "Health") it.copy(name = "My wellbeing", revision = 2) else it }
         assertTrue(seedExpenseCategories(context, store))
@@ -44,7 +44,7 @@ class ExpenseCategoryCatalogTest {
         assertEquals("Food", store.categories.value.first { it.id == "old-food" }.name)
         assertEquals("Transport", store.categories.value.first { it.id == "old-transport" }.name)
         assertTrue(store.categories.value.any { it.name == "Transportation" })
-        assertEquals(8, store.commands.size)
+        assertEquals(9, store.commands.size)
     }
 
     @Test fun interruptedSeedRetriesItsFrozenNameAndCommandAcrossLocaleChange() = runBlocking {
@@ -54,7 +54,7 @@ class ExpenseCategoryCatalogTest {
         assertTrue(seedExpenseCategories(chinese, store))
         assertEquals(store.commands[0], store.commands[1])
         assertEquals("Meals", store.categories.value.first { it.id == "starter-v1-meals" }.name)
-        assertEquals(9, store.categories.value.size)
+        assertEquals(10, store.categories.value.size)
     }
 
     @Test fun deletedCategoryAfterUncertainSeedCommitCannotBeResurrectedByRetry() = runBlocking {
@@ -65,7 +65,7 @@ class ExpenseCategoryCatalogTest {
         assertTrue(seedExpenseCategories(context, store))
         assertEquals(store.commands[0], store.commands[1])
         assertFalse(store.categories.value.any { it.id == "starter-v1-meals" })
-        assertEquals(8, store.categories.value.size)
+        assertEquals(9, store.categories.value.size)
     }
 
     @Test fun upgradeAddsSnacksWithoutRestoringPreviouslyDeletedCategories() = runBlocking {
@@ -73,7 +73,7 @@ class ExpenseCategoryCatalogTest {
         prefs.edit().putBoolean("completed", true).commit()
         val store = CatalogTestStore()
         assertTrue(seedExpenseCategories(context, store))
-        assertEquals(listOf("Snacks"), store.categories.value.map { it.name })
+        assertEquals(setOf("Snacks", "Travel"), store.categories.value.map { it.name }.toSet())
         store.categories.value = emptyList()
         assertTrue(seedExpenseCategories(context, store))
         assertTrue(store.categories.value.isEmpty())

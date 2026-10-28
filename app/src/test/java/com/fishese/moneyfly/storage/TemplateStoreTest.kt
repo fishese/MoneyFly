@@ -48,7 +48,7 @@ class TemplateStoreTest {
         val sql = db.openHelper.writableDatabase
         seedStarterTemplates(sql)
         val starters = store.templates.first()
-        assertEquals(11, starters.size)
+        assertEquals(12, starters.size)
         assertTrue(starters.all { it.fixedMerchant == null && it.patterns.flatMap { p -> p.segments }.filterIsInstance<PatternSegment.Slot>().map { s -> s.name }.containsAll(listOf(SlotName.AMOUNT, SlotName.MERCHANT)) })
         enableCapture()
         val sample = NotificationPayload(SuggestedTemplates.SAMSUNG_WALLET, "synthetic", "starter", now, now,
@@ -59,7 +59,7 @@ class TemplateStoreTest {
         assertTrue(store.execute(LedgerCommand.SetTemplateEnabled(first.id, first.revision, false)).applied)
         seedStarterTemplates(sql)
         assertFalse(store.templates.first().single { it.id == first.id }.enabled)
-        assertEquals(11, store.templates.first().size)
+        assertEquals(12, store.templates.first().size)
     }
 
     @Test fun startersDoNotOverrideExistingSourceSettings() = runBlocking {

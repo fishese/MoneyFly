@@ -16,12 +16,37 @@ class TemplateSelectionTest {
     }
 
     @Test fun ambiguousAndOverlappingValuesCannotCreateASilentlyDifferentTemplate() {
-        assertThrows(IllegalArgumentException::class.java) {
-            compileObservedPatterns(payload("12.50 and 12.50"), listOf(ObservedSlot(MessageField.BODY, "12.50", SlotName.AMOUNT)))
-        }
+        val repeated = compileObservedPatterns(payload("12.50 and 12.50"), listOf(ObservedSlot(MessageField.BODY, "12.50", SlotName.AMOUNT)))
+        val slots = repeated.single().segments.filterIsInstance<PatternSegment.Slot>()
+        assertEquals(2, slots.size)
+        assertTrue(slots.all { it.linked })
         assertThrows(IllegalArgumentException::class.java) {
             compileObservedPatterns(payload("Shop 12.50"), listOf(ObservedSlot(MessageField.BODY, "12.50", SlotName.AMOUNT), ObservedSlot(MessageField.BODY, "Shop 12.50", SlotName.MERCHANT)))
         }
+    }
+
+    @Test fun automaticallyRepeatedAmountChangesTogetherAndDisagreementNeedsReview() {
+        val original = payload("Paid 12.50; total 12.50.")
+        val patterns = compileObservedPatterns(original, listOf(ObservedSlot(MessageField.BODY, "12.50", SlotName.AMOUNT)))
+        val template = TemplateDefinition("repeated", "Synthetic", "synthetic.app", patterns, fixedCurrency = "HKD",
+            fixedCurrencyEvidence = FixedCurrencyEvidence.USER_CONFIRMED_ASSUMPTION, enabled = true)
+        assertTrue(TemplateEngine.preview(template, original).canEnable)
+        assertEquals(RecognitionStatus.READY, TemplateEngine.recognize(payload("Paid 23.45; total 23.45."), listOf(template)).status)
+        assertEquals(RecognitionStatus.REVIEW_NEEDED, TemplateEngine.recognize(payload("Paid 23.45; total 67.89."), listOf(template)).status)
+    }
+
+    @Test fun adjacentRepeatedCurrencyAndAmountCanBeTaughtSafely() {
+        val original = payload("Paid HKD72.50; total HKD72.50.")
+        val patterns = compileObservedPatterns(original, listOf(
+            ObservedSlot(MessageField.BODY, "HKD", SlotName.CURRENCY),
+            ObservedSlot(MessageField.BODY, "72.50", SlotName.AMOUNT)))
+        val slots = patterns.single().segments.filterIsInstance<PatternSegment.Slot>()
+        assertEquals(4, slots.size)
+        assertTrue(slots.filter { it.name == SlotName.AMOUNT }.all { it.numericOnly && it.linked })
+        val template = TemplateDefinition("adjacent", "Synthetic", "synthetic.app", patterns,
+            currencyTokens = listOf(CurrencyToken("HKD", "HKD", true)), enabled = true)
+        assertTrue(TemplateEngine.preview(template, original).canEnable)
+        assertEquals(RecognitionStatus.REVIEW_NEEDED, TemplateEngine.recognize(payload("Paid HKD10.00; total HKD20.00."), listOf(template)).status)
     }
 
     @Test fun selectedReferenceAndAccountHintVaryInGeneratedPositivePreviews() {
