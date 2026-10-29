@@ -23,11 +23,12 @@ import java.time.format.FormatStyle
 import java.util.Currency
 
 @Composable
-internal fun CurrencyPicker(currency: String, label: String, enabled: Boolean = true, tag: String = "reporting_currency", changed: (String) -> Unit) {
+internal fun CurrencyPicker(currency: String, label: String, enabled: Boolean = true, tag: String = "reporting_currency", modifier: Modifier = Modifier.fillMaxWidth(), recent: List<String> = emptyList(), changed: (String) -> Unit) {
     var open by rememberSaveable { mutableStateOf(false) }
     var search by rememberSaveable { mutableStateOf("") }
-    val choices = remember { Currency.getAvailableCurrencies().filter { it.defaultFractionDigits >= 0 }.sortedBy { it.currencyCode } }
-    OutlinedButton(onClick = { search = ""; open = true }, enabled = enabled, modifier = Modifier.fillMaxWidth().testTag(tag)) { Text("$label: $currency") }
+    val priority = listOf("HKD") + recent + listOf("JPY", "USD", "EUR", "GBP", "CNY", "TWD", "AUD", "CAD", "CHF", "SGD", "KRW", "THB", "MYR", "IDR", "PHP", "NZD")
+    val choices = remember(priority) { Currency.getAvailableCurrencies().filter { it.defaultFractionDigits >= 0 }.sortedWith(compareBy({ priority.indexOf(it.currencyCode).let { index -> if (index < 0) Int.MAX_VALUE else index } }, { it.currencyCode })) }
+    OutlinedButton(onClick = { search = ""; open = true }, enabled = enabled, modifier = modifier.testTag(tag)) { Text(if (tag == "entry_currency") currency else "$label: $currency") }
     if (open) AlertDialog(onDismissRequest = { open = false }, title = { Text(label) }, text = {
         Column {
             OutlinedTextField(search, { search = it }, label = { Text(stringResource(R.string.fx_search_currency)) }, singleLine = true, modifier = Modifier.fillMaxWidth().testTag("currency_search"))
@@ -72,7 +73,7 @@ internal fun EntryRateFields(currency: String, target: String, rate: String, cus
         Switch(custom, changeCustom, enabled = enabled, modifier = Modifier.testTag("custom_exchange_rate"))
     }
     if (custom) {
-        CurrencyPicker(target, stringResource(R.string.fx_rate_target), enabled, "entry_rate_currency", changeTarget)
+        CurrencyPicker(target, stringResource(R.string.fx_rate_target), enabled, "entry_rate_currency", changed = changeTarget)
         OutlinedTextField(rate, changeRate, enabled = enabled, label = { Text(stringResource(R.string.fx_rate_direction, currency, target)) },
             supportingText = { Text(stringResource(R.string.fx_rate_help)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             singleLine = true, modifier = Modifier.fillMaxWidth().testTag("entry_exchange_rate"))
